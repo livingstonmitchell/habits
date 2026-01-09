@@ -6,6 +6,7 @@ import '../auth/reset_password_screen.dart';
 import '../main_layout.dart';
 import '../profile_page.dart';
 import '../features/habits/habit_details_screen.dart';
+import '../features/habits/habit_models.dart';
 
 class AppRoutes {
   // Route names

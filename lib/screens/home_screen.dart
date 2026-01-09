@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../features/habits/habit_details_screen.dart';
+import '../features/habits/habit_models.dart';
 import '../routes/app_router.dart';
 
 class HomeScreen extends StatelessWidget {
