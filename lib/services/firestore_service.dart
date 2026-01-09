@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:habits_app/features/habits/habit_detail_helpers/model.dart';
 import 'package:habits_app/models/habit_models.dart';
 import 'package:habits_app/models/users.dart';
 import 'package:habits_app/utils/streak_utils.dart' as DateUtilsX;
@@ -14,6 +15,37 @@ class FirestoreService {
   // =========================
   // USERS
   // =========================
+// 1. Method to watch logs for a specific habit
+Stream<List<HabitLog>> watchHabitLogs(String uid, String habitId) {
+  return _db
+      .collection('users')
+      .doc(uid)
+      .collection('habits')
+      .doc(habitId)
+      .collection('logs')
+      .orderBy('date', descending: true)
+      .limit(60) // Show last 2 months
+      .snapshots()
+      .map((snapshot) =>
+          snapshot.docs.map((doc) => HabitLog.fromSnapshot(doc)).toList());
+}
+
+// 2. Method to update or create a log entry
+Future<void> updateHabitLog(
+  String uid, 
+  String habitId, 
+  String logId, 
+  Map<String, dynamic> data
+) async {
+  await _db
+      .collection('users')
+      .doc(uid)
+      .collection('habits')
+      .doc(habitId)
+      .collection('logs')
+      .doc(logId)
+      .set(data, SetOptions(merge: true));
+}
 
   DocumentReference<Map<String, dynamic>> userDoc(String uid) =>
       _db.collection('users').doc(uid);

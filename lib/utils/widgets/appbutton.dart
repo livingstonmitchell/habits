@@ -13,7 +13,7 @@ class AppButton extends StatelessWidget {
     required this.text,
     required this.onTap,
     this.loading = false,
-    this.outlined = false,
+    this.outlined = false, required Color color,
   });
 
   @override

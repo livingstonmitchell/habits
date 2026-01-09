@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 /// Supported habit modes. Defaults to completion-only for backward compatibility.
-enum HabitType { completionOnly, steps, duration, timesPerDay }
+enum HabitType { completionOnly, steps, duration, timesPerDay, count }
 
 @immutable
 class HabitDetailsArgs {
