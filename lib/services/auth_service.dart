@@ -1,42 +1,47 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// Tiny in-memory auth helper for the starter template.
-/// Replace with Firebase/Auth0/etc. when wiring real auth.
+/// Firebase-backed auth helper used across the app.
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  bool _signedIn = false;
-  String? _email;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  bool get isSignedIn => _signedIn;
-  String? get email => _email;
+  User? get currentUser => _auth.currentUser;
+  Stream<User?> authStateChanges() => _auth.authStateChanges();
 
-  Future<void> signIn({required String email, required String password}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    _signedIn = true;
-    _email = email;
-    debugPrint('Signed in as $email');
-  }
-
-  Future<void> register({
+  Future<UserCredential> signIn({
     required String email,
     required String password,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    _signedIn = true;
-    _email = email;
-    debugPrint('Registered $email');
+    if (email.isEmpty || password.isEmpty) {
+      throw ArgumentError('Email and password are required');
+    }
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Sign-in failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
-  Future<void> sendPasswordReset(String email) async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    debugPrint('Password reset sent to $email');
+  Future<UserCredential> register({
+    required String email,
+    required String password,
+  }) async {
+    return _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
-  Future<void> signOut() async {
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    _signedIn = false;
-    _email = null;
+  Future<void> sendPasswordReset(String email) {
+    return _auth.sendPasswordResetEmail(email: email);
   }
+
+  Future<void> signOut() => _auth.signOut();
 }

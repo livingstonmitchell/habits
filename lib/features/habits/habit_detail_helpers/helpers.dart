@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../utils/streak_utils.dart';
-import '../habit_models.dart';
+import '../../../models/habit_models.dart';
 import 'model.dart';
 
 String? progressSummary(HabitLog log, HabitDetailsArgs args) {

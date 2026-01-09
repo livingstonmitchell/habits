@@ -1,7 +1,8 @@
 // Simplified login screen for the habits_app
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
-import '../routes/app_router.dart';
+import '../utils/routes/app_router.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,16 +27,29 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
-    await AuthService.instance.signIn(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-    if (mounted) {
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(AppRoutes.userDashboard, (route) => false);
+    try {
+      await AuthService.instance.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil(AppRoutes.userDashboard, (route) => false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Sign in failed: ${e is FirebaseAuthException ? e.message ?? e.code : e.toString()}',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
-    setState(() => _submitting = false);
   }
 
   @override

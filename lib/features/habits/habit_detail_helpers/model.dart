@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../utils/streak_utils.dart';
-import '../habit_models.dart';
+import '../../../models/habit_models.dart';
 
 class HabitLog {
   HabitLog({
@@ -35,6 +35,8 @@ class HabitLog {
 
     if (rawDate is Timestamp) {
       parsedDate = dateOnly(rawDate.toDate());
+    } else if (rawDate is String) {
+      parsedDate = dateOnly(DateTime.tryParse(rawDate) ?? DateTime.now());
     } else if (rawDate is DateTime) {
       parsedDate = dateOnly(rawDate);
     } else {

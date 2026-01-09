@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../../utils/streak_utils.dart';
-import '../habit_models.dart';
+import '../../../models/habit_models.dart';
 import 'helpers.dart';
 import 'model.dart';
 

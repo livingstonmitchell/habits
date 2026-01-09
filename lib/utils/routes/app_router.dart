@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
-import '../auth/splash_screen.dart';
-import '../auth/login_screen.dart';
-import '../auth/register_screen.dart';
-import '../auth/reset_password_screen.dart';
-import '../main_layout.dart';
-import '../profile_page.dart';
-import '../features/habits/habit_details_screen.dart';
-import '../features/habits/habit_models.dart';
+import 'package:habits_app/screens/habits/add_habits.dart';
+import '../../auth/splash_screen.dart';
+import '../../auth/login_screen.dart';
+import '../../auth/register_screen.dart';
+import '../../auth/reset_password_screen.dart';
+import '../../main_layout.dart';
+import '../../profile_page.dart';
+import '../../screens/habits/habit_details_screen.dart';
+import '../../models/habit_models.dart';
 
 class AppRoutes {
   // Route names
-  static const String splash = '/splash';
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
   static const String resetPassword = '/reset-password';
   static const String userDashboard = '/user';
   static const String userProfile = '/user/profile';
   static const String habitDetails = '/habit/details';
+  static const String addHabit = '/habit/add';
 
-  static String get initialRoute => splash;
+  static String get initialRoute => onboarding;
 
   // Named route table
   static Map<String, WidgetBuilder> get routes => {
-    '/': (_) => const SplashScreen(),
-    splash: (_) => const SplashScreen(),
+    '/': (_) => const OnboardingScreen(),
+    onboarding: (_) => const OnboardingScreen(),
     login: (_) => const LoginScreen(),
+    addHabit: (_) => const AddEditHabitScreen(),
     register: (_) => const RegisterScreen(),
     resetPassword: (_) => const ResetPasswordScreen(),
     userDashboard: (_) => const MainLayout(),
@@ -48,9 +51,9 @@ class AppNavigator {
   static BuildContext? get context => navigator?.context;
 
   // Authentication navigation
-  static Future<void> toSplash() async {
+  static Future<void> toOnboarding() async {
     await navigator?.pushNamedAndRemoveUntil(
-      AppRoutes.splash,
+      AppRoutes.onboarding,
       (route) => false,
     );
   }

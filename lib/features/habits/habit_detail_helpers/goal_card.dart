@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../habit_models.dart';
+import '../../../models/habit_models.dart';
 
 class HabitGoalCard extends StatelessWidget {
   HabitGoalCard({

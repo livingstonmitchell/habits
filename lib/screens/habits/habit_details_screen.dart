@@ -1,16 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import '../../utils/streak_utils.dart';
-import 'habit_models.dart';
-import 'habit_detail_helpers/goal_card.dart';
-import 'habit_detail_helpers/header.dart';
-import 'habit_detail_helpers/helpers.dart';
-import 'habit_detail_helpers/history_list.dart';
-import 'habit_detail_helpers/model.dart';
-import 'habit_detail_helpers/note_card.dart';
-import 'habit_detail_helpers/recent_grid.dart';
-import 'habit_detail_helpers/streak_card.dart';
+import '../../models/habit_models.dart';
+import '../../features/habits/habit_detail_helpers/goal_card.dart';
+import '../../features/habits/habit_detail_helpers/header.dart';
+import '../../features/habits/habit_detail_helpers/helpers.dart';
+import '../../features/habits/habit_detail_helpers/history_list.dart';
+import '../../features/habits/habit_detail_helpers/model.dart';
+import '../../features/habits/habit_detail_helpers/note_card.dart';
+import '../../features/habits/habit_detail_helpers/recent_grid.dart';
+import '../../features/habits/habit_detail_helpers/streak_card.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
   HabitDetailsScreen({super.key, HabitDetailsArgs? args})
@@ -31,24 +33,55 @@ class HabitDetailsScreen extends StatefulWidget {
   State<HabitDetailsScreen> createState() => _HabitDetailsScreenState();
 }
 
+HabitType? _habitTypeFromValue(dynamic value) {
+  if (value is HabitType) return value;
+  if (value is String) {
+    final lower = value.toLowerCase();
+    for (final type in HabitType.values) {
+      if (type.name.toLowerCase() == lower) return type;
+    }
+  }
+  return null;
+}
+
+int? _intFromValue(dynamic value) {
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
 class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   final _noteController = TextEditingController();
   bool _toggling = false;
 
-  HabitType get _habitType => widget.args.habitType;
+  HabitType? _resolvedHabitType;
+  int? _resolvedGoalValue;
+  String? _resolvedUnitLabel;
+
+  HabitType get _habitType => _resolvedHabitType ?? widget.args.habitType;
   bool get _isCompletionOnly => _habitType == HabitType.completionOnly;
-  int? get _goalValue => widget.args.goalValue;
+  int? get _goalValue => _resolvedGoalValue ?? widget.args.goalValue;
   String get _unitLabel =>
-      widget.args.unitLabel ?? defaultUnitLabel(_habitType);
+      _resolvedUnitLabel ?? widget.args.unitLabel ?? defaultUnitLabel(_habitType);
 
-  CollectionReference<Map<String, dynamic>> get _logsRef => FirebaseFirestore
-      .instance
-      .collection('habits')
-      .doc(widget.args.habitId)
-      .collection('logs');
+  String? get _uid => AuthService.instance.currentUser?.uid;
 
-  Stream<List<HabitLog>> get _logStream {
-    return _logsRef
+  CollectionReference<Map<String, dynamic>>? get _logsRef {
+    final uid = _uid;
+    if (uid == null) return null;
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('habits')
+        .doc(widget.args.habitId)
+        .collection('logs');
+  }
+
+  Stream<List<HabitLog>>? get _logStream {
+    final ref = _logsRef;
+    if (ref == null) return null;
+    return ref
         .orderBy('date', descending: true)
         .limit(60)
         .snapshots()
@@ -71,7 +104,17 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     }
 
     final now = dateOnly(DateTime.now());
-    final docRef = _logsRef.doc(dateKey(now));
+    final ref = _logsRef;
+    if (ref == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in again.')),
+        );
+      }
+      return;
+    }
+    final todayKey = dateKey(now);
+    final docRef = ref.doc(todayKey);
     final shouldMarkComplete = !(todayLog?.completed ?? false);
     final trimmedNote = _noteController.text.trim();
     final noteToSave = trimmedNote.isEmpty ? null : trimmedNote;
@@ -79,7 +122,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     setState(() => _toggling = true);
     try {
       await docRef.set({
-        'date': Timestamp.fromDate(now),
+        'date': todayKey,
         'completed': shouldMarkComplete,
         'note': shouldMarkComplete ? noteToSave : null,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -166,7 +209,17 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     required int addedAmount,
   }) async {
     final now = dateOnly(DateTime.now());
-    final docRef = _logsRef.doc(dateKey(now));
+    final ref = _logsRef;
+    if (ref == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in again.')),
+        );
+      }
+      return;
+    }
+    final todayKey = dateKey(now);
+    final docRef = ref.doc(todayKey);
     final currentProgress = todayLog?.progress ?? 0;
     final total = (currentProgress + addedAmount).clamp(0, 1 << 31);
     final goal = _goalValue ?? 1; // default to 1 so streaks still work
@@ -177,11 +230,11 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     setState(() => _toggling = true);
     try {
       await docRef.set({
-        'date': Timestamp.fromDate(now),
+        'date': todayKey,
         'completed': meetsGoal,
         'progress': total,
         'goal': _goalValue,
-        'habitType': widget.args.habitType.name,
+        'habitType': _habitType.name,
         'note': noteToSave,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -200,12 +253,41 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<HabitLog>>(
-      stream: _logStream,
-      builder: (context, snapshot) {
+    final uid = _uid;
+    if (uid == null) {
+      return const Scaffold(
+        body: Center(child: Text('Please sign in to view this habit.')),
+      );
+    }
+
+    final logsStream = _logStream;
+    if (logsStream == null) {
+      return const Scaffold(
+        body: Center(child: Text('Unable to load habit logs.')),
+      );
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: FirestoreService.instance.watchHabit(uid, widget.args.habitId),
+      builder: (context, habitSnap) {
+        final habitData = habitSnap.data;
+        final title = (habitData?['title'] ?? widget.args.title).toString();
+        final emoji = (habitData?['emoji'] ?? widget.args.emoji).toString();
+        final habitType = _habitTypeFromValue(habitData?['habitType']) ?? widget.args.habitType;
+        final goalValue = _intFromValue(habitData?['goalValue']) ?? widget.args.goalValue;
+        final unitLabel = (habitData?['unitLabel'] ?? widget.args.unitLabel)?.toString();
+
+        // Cache resolved values so actions use the latest habit metadata
+        _resolvedHabitType = habitType;
+        _resolvedGoalValue = goalValue;
+        _resolvedUnitLabel = unitLabel;
+
+        return StreamBuilder<List<HabitLog>>(
+          stream: logsStream,
+          builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: Text(widget.args.title)),
+            appBar: AppBar(title: Text(title)),
             body: Center(
               child: Text('Something went wrong loading this habit.'),
             ),
@@ -235,7 +317,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
         );
 
         final todayProgress = todayLog.progress ?? 0;
-        final goalValue = _goalValue;
+        final effectiveGoalValue = this._goalValue ?? goalValue;
 
         final newNoteText = todayLog.note ?? '';
         if (_noteController.text != newNoteText) {
@@ -255,8 +337,8 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
             body: Stack(
               children: [
                 HabitHeader(
-                  emoji: widget.args.emoji,
-                  title: widget.args.title,
+                  emoji: emoji,
+                  title: title,
                 ),
                 SafeArea(
                   child: Column(
@@ -285,9 +367,9 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                                 if (!_isCompletionOnly) ...[
                                   HabitGoalCard(
                                     progress: todayProgress,
-                                    goal: goalValue,
-                                    unitLabel: _unitLabel,
-                                    habitType: _habitType,
+                                    goal: effectiveGoalValue,
+                                    unitLabel: unitLabel ?? _unitLabel,
+                                    habitType: habitType,
                                   ),
                                   SizedBox(height: 12),
                                 ],
@@ -377,6 +459,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
           ),
         );
       },
-    );
+        );
+      },    );
   }
 }

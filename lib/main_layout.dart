@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'profile_page.dart';
-import 'screens/home_screen.dart';
-import 'features/habits/habit_details_screen.dart';
+import 'screens/dashboard/home_screen.dart';
+import 'screens/habits/habit_details_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -13,7 +13,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _index = 0;
   late final List<Widget> _pages =  [
-    HomeScreen(),
+    TodayHomeScreen(),
     HabitDetailsScreen(),
     ProfilePage(),
   ];
