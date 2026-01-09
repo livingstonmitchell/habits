@@ -34,7 +34,7 @@ class AppRoutes {
       if (args is HabitDetailsArgs) {
         return HabitDetailsScreen(args: args);
       }
-      return  HabitDetailsScreen();
+      return HabitDetailsScreen();
     },
   };
 }

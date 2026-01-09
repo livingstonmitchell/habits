@@ -5,9 +5,9 @@ import '../features/habits/habit_models.dart';
 import '../routes/app_router.dart';
 
 class HomeScreen extends StatelessWidget {
-   HomeScreen({super.key});
+  HomeScreen({super.key});
 
-  static final  List<HabitDetailsArgs> _demoHabits = [
+  static final List<HabitDetailsArgs> _demoHabits = [
     HabitDetailsArgs(
       habitId: 'water-intake',
       title: 'Drink water',

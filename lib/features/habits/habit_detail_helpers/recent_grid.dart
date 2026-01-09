@@ -297,7 +297,10 @@ class _DayDot extends StatelessWidget {
         ),
         if (!compact) ...[
           SizedBox(height: 4),
-          Text(weekdayLabel(date), style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            weekdayLabel(date),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ],
     );
