@@ -12,7 +12,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _index = 0;
-  late final List<Widget> _pages = const [
+  late final List<Widget> _pages =  [
     HomeScreen(),
     HabitDetailsScreen(),
     ProfilePage(),
