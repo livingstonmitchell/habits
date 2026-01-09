@@ -1,8 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-/// Lightweight bootstrap for the starter template.
-/// This keeps only the bits needed to ensure WidgetsBinding is ready.
+import 'firebase_options.dart';
+
+/// Initializes core services (Firebase + bindings) before the app starts.
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Future<void>.delayed(const Duration(milliseconds: 200));
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }

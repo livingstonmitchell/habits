@@ -5,6 +5,7 @@ import '../auth/register_screen.dart';
 import '../auth/reset_password_screen.dart';
 import '../main_layout.dart';
 import '../profile_page.dart';
+import '../features/habits/habit_details_screen.dart';
 
 class AppRoutes {
   // Route names
@@ -14,6 +15,7 @@ class AppRoutes {
   static const String resetPassword = '/reset-password';
   static const String userDashboard = '/user';
   static const String userProfile = '/user/profile';
+  static const String habitDetails = '/habit/details';
 
   static String get initialRoute => splash;
 
@@ -26,8 +28,14 @@ class AppRoutes {
     resetPassword: (_) => const ResetPasswordScreen(),
     userDashboard: (_) => const MainLayout(),
     userProfile: (_) => const ProfilePage(),
+    habitDetails: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is HabitDetailsArgs) {
+        return HabitDetailsScreen(args: args);
+      }
+      return const HabitDetailsScreen();
+    },
   };
-
 }
 
 // Route navigation helpers

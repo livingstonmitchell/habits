@@ -7,7 +7,7 @@ class AppCore extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Blank Template',
+      title: 'habits_app',
       debugShowCheckedModeBanner: false,
       navigatorKey: AppNavigator.navigatorKey,
       theme: ThemeData(
@@ -16,7 +16,6 @@ class AppCore extends StatelessWidget {
       ),
       initialRoute: AppRoutes.initialRoute,
       routes: AppRoutes.routes,
-     
     );
   }
 }

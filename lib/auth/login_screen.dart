@@ -1,4 +1,4 @@
-// Simplified login screen for the blank template
+// Simplified login screen for the habits_app
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../routes/app_router.dart';
