@@ -19,8 +19,8 @@ class AppRoutes {
 
   // Named route table
   static Map<String, WidgetBuilder> get routes => {
-    '/': (_) => const SplashScreen(),
-    splash: (_) => const SplashScreen(),
+    '/': (_) => const OnboardingScreen(),
+    splash: (_) => const OnboardingScreen(),
     login: (_) => const LoginScreen(),
     register: (_) => const RegisterScreen(),
     resetPassword: (_) => const ResetPasswordScreen(),
