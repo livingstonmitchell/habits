@@ -1,7 +1,6 @@
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:habits_app/models/users.dart';
 
-
 // import 'auth_service.dart';
 // import 'firestore_service.dart';
 
@@ -99,13 +98,11 @@
 //   }
 // }
 
-
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:habits_app/models/users.dart';
 import 'package:habits_app/services/firestore_service.dart';
-
 
 class UserService {
   static final UserService _instance = UserService._internal();
@@ -131,19 +128,35 @@ class UserService {
     String? bio,
   }) async {
     try {
+      final fn = firstName?.trim() ?? '';
+      final ln = lastName?.trim() ?? '';
+      final dn = displayName?.trim() ?? '';
+      final gn = gender?.trim() ?? '';
+      final ph = phone?.trim() ?? '';
+      final bioText = bio?.trim() ?? '';
+
       final data = <String, dynamic>{};
-      if (firstName != null) data['firstName'] = firstName;
-      if (lastName != null) data['lastName'] = lastName;
-      if (displayName != null) data['displayName'] = displayName;
-      if (gender != null) data['gender'] = gender;
-      if (phone != null) data['phone'] = phone;
-      if (bio != null) data['bio'] = bio;
+      if (fn.isNotEmpty) data['firstName'] = fn;
+      if (ln.isNotEmpty) data['lastName'] = ln;
+      if (dn.isNotEmpty) data['displayName'] = dn;
+      if (gn.isNotEmpty) data['gender'] = gn;
+      if (ph.isNotEmpty) data['phone'] = ph;
+      if (bioText.isNotEmpty) data['bio'] = bioText;
+
+      // If no explicit displayName provided, derive one from first/last.
+      if (data['displayName'] == null) {
+        final combined = '$fn $ln'.trim();
+        if (combined.isNotEmpty) {
+          data['displayName'] = combined;
+        }
+      }
 
       // Always update the lastUpdated timestamp
       data['lastUpdated'] = FieldValue.serverTimestamp();
 
       if (data.isNotEmpty) {
-        await _fs.userDoc(uid).update(data);
+        // Use merge to avoid failures when the user doc does not yet exist.
+        await _fs.userDoc(uid).set(data, SetOptions(merge: true));
       }
     } catch (e) {
       throw Exception('Failed to update profile: ${e.toString()}');
@@ -169,9 +182,10 @@ class UserService {
       final url = await uploadTask.ref.getDownloadURL();
 
       // Update the user document with the new photo URL
-      await _fs.userDoc(
-        uid,
-      ).update({'photoUrl': url, 'lastUpdated': FieldValue.serverTimestamp()});
+      await _fs.userDoc(uid).update({
+        'photoUrl': url,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
 
       return url;
     } catch (e) {
@@ -244,4 +258,4 @@ class UserService {
       throw Exception('Failed to update display name: ${e.toString()}');
     }
   }
-  }
+}

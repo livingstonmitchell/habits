@@ -3,6 +3,7 @@ import 'package:habits_app/utils/validator.dart';
 import 'package:habits_app/utils/widgets/appbutton.dart';
 import 'package:habits_app/utils/widgets/custom_textfiels.dart';
 import 'package:habits_app/utils/theme.dart';
+import 'package:habits_app/models/habit_models.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
@@ -19,20 +20,62 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
 
   final _title = TextEditingController();
   final _target = TextEditingController();
+  final _unit = TextEditingController();
 
   bool _loading = false;
 
   String _emoji = "✨";
   String _frequency = "daily";
+  HabitType _habitType = HabitType.completionOnly;
   bool _active = true;
   int _color = 0xFF6D28D9;
 
   String? _habitId; // if editing
 
+  HabitType? _parseHabitType(dynamic value) {
+    if (value is HabitType) return value;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      for (final type in HabitType.values) {
+        if (type.name.toLowerCase() == lower) return type;
+      }
+    }
+    return null;
+  }
+
+  String get _goalHint {
+    switch (_habitType) {
+      case HabitType.steps:
+        return "e.g., 5000";
+      case HabitType.duration:
+        return "e.g., 30";
+      case HabitType.timesPerDay:
+        return "e.g., 3";
+      case HabitType.completionOnly:
+      default:
+        return "e.g., 1";
+    }
+  }
+
+  String get _unitHint {
+    switch (_habitType) {
+      case HabitType.duration:
+        return "minutes";
+      case HabitType.steps:
+        return "steps";
+      case HabitType.timesPerDay:
+        return "times";
+      case HabitType.completionOnly:
+      default:
+        return "";
+    }
+  }
+
   @override
   void dispose() {
     _title.dispose();
     _target.dispose();
+    _unit.dispose();
     super.dispose();
   }
 
@@ -46,10 +89,18 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
       _title.text = (habit['title'] ?? '').toString();
       _emoji = (habit['emoji'] ?? '✨').toString();
       _frequency = (habit['frequency'] ?? 'daily').toString();
+      _habitType =
+          _parseHabitType(habit['habitType']) ?? HabitType.completionOnly;
       _active = (habit['isActive'] ?? true) == true;
       _color = (habit['color'] is int) ? habit['color'] as int : _color;
       final t = habit['targetPerDay'];
       if (t != null) _target.text = t.toString();
+      final g = habit['goalValue'];
+      if (g != null && _target.text.isEmpty) {
+        _target.text = g.toString();
+      }
+      final u = habit['unitLabel'];
+      if (u != null) _unit.text = u.toString();
       setState(() {});
     }
   }
@@ -76,6 +127,8 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
           ? null
           : int.tryParse(_target.text.trim());
 
+      final unitLabel = _unit.text.trim().isEmpty ? null : _unit.text.trim();
+
       final data = <String, dynamic>{
         'title': _title.text.trim(),
         'emoji': _emoji,
@@ -83,8 +136,9 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
         'frequency': _frequency,
         'targetPerDay': target,
         'isActive': _active,
-        'habitType': 'completionOnly',
+        'habitType': _habitType.name,
         'goalValue': target,
+        'unitLabel': unitLabel,
       };
 
       if (_habitId == null) {
@@ -208,11 +262,45 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
                 ),
                 const SizedBox(height: 12),
 
+                Text("Measurement", style: AppText.muted),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<HabitType>(
+                  value: _habitType,
+                  items: const [
+                    DropdownMenuItem(
+                      value: HabitType.completionOnly,
+                      child: Text("Completion only"),
+                    ),
+                    DropdownMenuItem(
+                      value: HabitType.timesPerDay,
+                      child: Text("Times per day"),
+                    ),
+                    DropdownMenuItem(
+                      value: HabitType.steps,
+                      child: Text("Steps"),
+                    ),
+                    DropdownMenuItem(
+                      value: HabitType.duration,
+                      child: Text("Minutes"),
+                    ),
+                  ],
+                  onChanged: (v) => setState(
+                    () => _habitType = v ?? HabitType.completionOnly,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 AppTextField(
                   controller: _target,
-                  label: "Target per day (optional)",
-                  hint: "e.g., 1",
+                  label: "Goal (optional)",
+                  hint: _goalHint,
                   keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 10),
+                AppTextField(
+                  controller: _unit,
+                  label: "Unit label (optional)",
+                  hint: _unitHint,
                 ),
                 const SizedBox(height: 12),
 

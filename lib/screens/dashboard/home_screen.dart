@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:habits_app/utils/widgets/habitcard.dart';
 import 'package:habits_app/utils/routes/app_router.dart';
 import 'package:habits_app/services/auth_service.dart';
@@ -52,7 +53,11 @@ class TodayHomeScreen extends StatelessWidget {
                 stream: FirestoreService.instance.watchProfile(uid),
                 builder: (context, snap) {
                   final profile = snap.data ?? {};
-                  final name = (profile['displayName'] ?? 'Friend').toString();
+                  final name = _friendlyName(profile, user);
+                  final photoUrl =
+                      (profile['photoUrl'] ?? profile['profileImageUrl'] ?? '')
+                          .toString()
+                          .trim();
 
                   return Stack(
                     children: [
@@ -131,14 +136,19 @@ class TodayHomeScreen extends StatelessWidget {
                           child: CircleAvatar(
                             radius: 23,
                             backgroundColor: AppColors.primarySoft,
-                            child: Text(
-                              name.isNotEmpty
-                                  ? name.substring(0, 1).toUpperCase()
-                                  : "U",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                            backgroundImage: photoUrl.isNotEmpty
+                                ? NetworkImage(photoUrl)
+                                : null,
+                            child: photoUrl.isNotEmpty
+                                ? null
+                                : Text(
+                                    name.isNotEmpty
+                                        ? name.substring(0, 1).toUpperCase()
+                                        : "U",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -252,6 +262,36 @@ class TodayHomeScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+String _friendlyName(Map<String, dynamic> profile, User user) {
+  final display = (profile['displayName'] ?? '').toString().trim();
+  final first = (profile['firstName'] ?? '').toString().trim();
+  final last = (profile['lastName'] ?? '').toString().trim();
+  final altName = (profile['name'] ?? profile['fullName'] ?? '')
+      .toString()
+      .trim();
+  final firstLegacy = (profile['first_name'] ?? '').toString().trim();
+  final lastLegacy = (profile['last_name'] ?? '').toString().trim();
+  final combinedLegacy = '$firstLegacy $lastLegacy'.trim();
+  final combined = '$first $last'.trim();
+  final authName = user.displayName?.trim() ?? '';
+  final email = user.email ?? '';
+
+  if (altName.isNotEmpty) return altName;
+  if (display.isNotEmpty) return display;
+  if (combined.isNotEmpty) return combined;
+  if (combinedLegacy.isNotEmpty) return combinedLegacy;
+  if (authName.isNotEmpty) return authName;
+  if (email.isNotEmpty) return email.split('@').first;
+  return 'Friend';
+}
+
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 class _RoundIconButton extends StatelessWidget {
