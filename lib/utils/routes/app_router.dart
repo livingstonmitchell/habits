@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:habits_app/screens/habits/add_habits.dart';
+import 'package:habits_app/screens/progress-screen.dart';
 import '../../auth/splash_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/register_screen.dart';
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String userProfile = '/user/profile';
   static const String habitDetails = '/habit/details';
   static const String addHabit = '/habit/add';
+  static const String progress = '/progress';
 
   static String get initialRoute => onboarding;
 
@@ -26,6 +28,7 @@ class AppRoutes {
   static Map<String, WidgetBuilder> get routes => {
     '/': (_) => const OnboardingScreen(),
     onboarding: (_) => const OnboardingScreen(),
+    progress: (_) => const ProgressScreen(),
     login: (_) => const LoginScreen(),
     addHabit: (_) => const AddEditHabitScreen(),
     register: (_) => const RegisterScreen(),

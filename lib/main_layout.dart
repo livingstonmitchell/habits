@@ -40,6 +40,7 @@
 
 import 'dart:ui'; // Required for ImageFilter
 import 'package:flutter/material.dart';
+import 'package:habits_app/screens/progress-screen.dart';
 import 'profile_page.dart';
 import 'screens/dashboard/home_screen.dart';
 import 'screens/habits/habit_details_screen.dart';
@@ -57,7 +58,8 @@ class _MainLayoutState extends State<MainLayout> {
 
   late final List<Widget> _pages = [
     const TodayHomeScreen(),
-    HabitDetailsScreen(),
+    // HabitDetailsScreen(),
+    const ProgressScreen(),
     const ProfilePage(),
   ];
 
@@ -129,7 +131,7 @@ class _MainLayoutState extends State<MainLayout> {
                 _buildNavItem(
                   Icons.local_fire_department_rounded,
                   Icons.local_fire_department_outlined,
-                  'Habits',
+                  'Progress',
                   1,
                 ),
                 _buildNavItem(
