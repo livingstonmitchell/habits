@@ -13,6 +13,10 @@ class AppColors {
   // Accent (orange/peach like the 3rd reference)
   static const primary = Color(0xFFF97316); // orange
   static const primarySoft = Color(0xFFFFEDD5);
+
+  // Status
+  static const success = Color(0xFF22C55E);
+  static const danger = Color(0xFFEF4444);
 }
 
 class AppText {
