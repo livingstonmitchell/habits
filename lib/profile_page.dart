@@ -744,19 +744,21 @@ class _ProfilePageState extends State<ProfilePage> {
   void _initUserStream() {
     final user = AuthService.instance.currentUser;
     if (user != null) {
-      _userDataSubscription = UserService.instance.getUserStream(user.uid).listen((doc) {
-        final data = doc.data();
-        if (data != null && mounted) {
-          setState(() {
-            _firstName.text = data['firstName'] ?? '';
-            _lastName.text = data['lastName'] ?? '';
-            _bio.text = data['bio'] ?? '';
-            _phone.text = data['phone'] ?? '';
-            _photoUrl = data['photoUrl'];
-            _coverUrl = data['coverUrl'];
+      _userDataSubscription = UserService.instance
+          .getUserStream(user.uid)
+          .listen((doc) {
+            final data = doc.data();
+            if (data != null && mounted) {
+              setState(() {
+                _firstName.text = data['firstName'] ?? '';
+                _lastName.text = data['lastName'] ?? '';
+                _bio.text = data['bio'] ?? '';
+                _phone.text = data['phone'] ?? '';
+                _photoUrl = data['photoUrl'];
+                _coverUrl = data['coverUrl'];
+              });
+            }
           });
-        }
-      });
     }
   }
 
@@ -788,47 +790,73 @@ class _ProfilePageState extends State<ProfilePage> {
         title: const Text('Logout'),
         content: const Text('Are you sure you want to sign out?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Logout'),
+          ),
         ],
       ),
     );
 
     if (confirm == true) {
       await AuthService.instance.signOut();
-      if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      if (mounted)
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
   Future<void> _pickImage(bool isCover) async {
-    if (isCover) setState(() => _isCoverBusy = true); else setState(() => _isBusy = true);
-    
+    if (isCover)
+      setState(() => _isCoverBusy = true);
+    else
+      setState(() => _isBusy = true);
+
     try {
       final picker = ImagePicker();
-      final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      final file = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
       if (file == null) return;
 
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
       if (isCover) {
-        final ref = FirebaseStorage.instance.ref().child('covers/${user.uid}.jpg');
+        final ref = FirebaseStorage.instance.ref().child(
+          'covers/${user.uid}.jpg',
+        );
         await ref.putFile(File(file.path));
         final url = await ref.getDownloadURL();
         await UserService.instance.updateCoverImage(user.uid, url);
       } else {
-        await UserService.instance.uploadProfilePhoto(uid: user.uid, file: File(file.path));
+        await UserService.instance.uploadProfilePhoto(
+          uid: user.uid,
+          file: File(file.path),
+        );
       }
       _showSnackBar('Image updated!');
     } catch (e) {
       _showSnackBar('Upload failed: $e');
     } finally {
-      if (mounted) setState(() { _isBusy = false; _isCoverBusy = false; });
+      if (mounted)
+        setState(() {
+          _isBusy = false;
+          _isCoverBusy = false;
+        });
     }
   }
 
   void _showSnackBar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
   }
 
   // 4. BUILD METHOD
@@ -865,8 +893,18 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'profile-fab',
         onPressed: _isBusy ? null : _handleSave,
-        label: _isBusy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text("Save Changes"),
+        label: _isBusy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Text("Save Changes"),
         icon: const Icon(Icons.save),
       ),
     );
@@ -882,12 +920,19 @@ class _ProfilePageState extends State<ProfilePage> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            if (_coverUrl != null) Image.network(_coverUrl!, fit: BoxFit.cover) else Container(color: AppColors.primary),
+            if (_coverUrl != null)
+              Image.network(_coverUrl!, fit: BoxFit.cover)
+            else
+              Container(color: AppColors.primary),
             Container(color: Colors.black26),
             Positioned(
-              bottom: 60, right: 10,
+              bottom: 60,
+              right: 10,
               child: IconButton(
-                icon: const CircleAvatar(backgroundColor: Colors.white24, child: Icon(Icons.camera_alt, color: Colors.white, size: 20)),
+                icon: const CircleAvatar(
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                ),
                 onPressed: () => _pickImage(true),
               ),
             ),
@@ -913,7 +958,10 @@ class _ProfilePageState extends State<ProfilePage> {
         CircleAvatar(
           backgroundColor: AppColors.primary,
           radius: 18,
-          child: IconButton(icon: const Icon(Icons.edit, size: 18, color: Colors.white), onPressed: () => _pickImage(false)),
+          child: IconButton(
+            icon: const Icon(Icons.edit, size: 18, color: Colors.white),
+            onPressed: () => _pickImage(false),
+          ),
         ),
       ],
     );
@@ -922,7 +970,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildUserInfo(String? email) {
     return Column(
       children: [
-        Text("${_firstName.text} ${_lastName.text}", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(
+          "${_firstName.text} ${_lastName.text}",
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         Text(email ?? '', style: const TextStyle(color: Colors.grey)),
       ],
     );
@@ -931,12 +982,23 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildFormSection() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
+      ),
       child: Column(
         children: [
           _buildTextField(_firstName, "First Name", Icons.person_outline),
           _buildTextField(_lastName, "Last Name", Icons.person_outline),
-          _buildTextField(_phone, "Phone", Icons.phone_android, type: TextInputType.phone),
+          _buildTextField(
+            _phone,
+            "Phone",
+            Icons.phone_android,
+            type: TextInputType.phone,
+          ),
           _buildTextField(_bio, "Bio", Icons.notes, lines: 3),
         ],
       ),
@@ -946,13 +1008,18 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildActionSection() {
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         children: [
           ListTile(
             leading: const Icon(Icons.lock_outline, color: Colors.blue),
             title: const Text("Reset Password"),
-            onTap: () => AuthService.instance.sendPasswordReset(AuthService.instance.currentUser!.email!),
+            onTap: () => AuthService.instance.sendPasswordReset(
+              AuthService.instance.currentUser!.email!,
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
@@ -964,7 +1031,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {int lines = 1, TextInputType type = TextInputType.text}) {
+  Widget _buildTextField(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    int lines = 1,
+    TextInputType type = TextInputType.text,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(

@@ -66,25 +66,22 @@ class _MainLayoutState extends State<MainLayout> {
     return Scaffold(
       // extendBody allows the body to be drawn under the bottomNavigationBar
       extendBody: true,
-      
-      // We add a little padding to the bottom of the stack so 
+
+      // We add a little padding to the bottom of the stack so
       // content doesn't get completely hidden behind the dock
       body: Padding(
-        padding: const EdgeInsets.only(bottom: 20), 
-        child: IndexedStack(
-          index: _index, 
-          children: _pages,
-        ),
+        padding: const EdgeInsets.only(bottom: 20),
+        child: IndexedStack(index: _index, children: _pages),
       ),
-      
+
       bottomNavigationBar: _buildGlassNavBar(),
     );
   }
 
   Widget _buildGlassNavBar() {
     return Container(
-      height: 60,
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 25),
+      height: 82,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Stack(
         children: [
           // 1. THE GLASS BLUR LAYER
@@ -104,7 +101,7 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ),
           ),
-          
+
           // 2. THE NAVIGATION CONTENT
           Theme(
             // This removes the splash/ripple effect that can look messy on glass
@@ -123,9 +120,24 @@ class _MainLayoutState extends State<MainLayout> {
               showUnselectedLabels: false,
               type: BottomNavigationBarType.fixed,
               items: [
-                _buildNavItem(Icons.home_rounded, Icons.home_outlined, 'Home', 0),
-                _buildNavItem(Icons.local_fire_department_rounded, Icons.local_fire_department_outlined, 'Habits', 1),
-                _buildNavItem(Icons.person_rounded, Icons.person_outline_rounded, 'Profile', 2),
+                _buildNavItem(
+                  Icons.home_rounded,
+                  Icons.home_outlined,
+                  'Home',
+                  0,
+                ),
+                _buildNavItem(
+                  Icons.local_fire_department_rounded,
+                  Icons.local_fire_department_outlined,
+                  'Habits',
+                  1,
+                ),
+                _buildNavItem(
+                  Icons.person_rounded,
+                  Icons.person_outline_rounded,
+                  'Profile',
+                  2,
+                ),
               ],
             ),
           ),
@@ -134,20 +146,24 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  BottomNavigationBarItem _buildNavItem(IconData activeIcon, IconData inactiveIcon, String label, int index) {
+  BottomNavigationBarItem _buildNavItem(
+    IconData activeIcon,
+    IconData inactiveIcon,
+    String label,
+    int index,
+  ) {
     bool isSelected = _index == index;
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.15) : Colors.transparent,
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Icon(
-          isSelected ? activeIcon : inactiveIcon,
-          size: 28,
-        ),
+        child: Icon(isSelected ? activeIcon : inactiveIcon, size: 28),
       ),
       label: label,
     );

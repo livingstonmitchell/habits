@@ -308,11 +308,19 @@ class TodayHomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE), // Ultra-light blue/grey
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.addHabit),
-        label: const Text("New Habit"),
-        icon: const Icon(Icons.add_rounded),
-        backgroundColor: AppColors.primary,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 60),
+        child: FloatingActionButton(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(32),
+          ),
+          heroTag: 'home-fab',
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.addHabit),
+          // label: const Text(""),
+          child:  Icon(Icons.add_rounded),
+          backgroundColor: AppColors.primary,
+        ),
       ),
       body: SafeArea(
         child: CustomScrollView(
@@ -325,7 +333,10 @@ class TodayHomeScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _RoundIconButton(icon: Icons.widgets_outlined, onTap: () {}),
+                    _RoundIconButton(
+                      icon: Icons.widgets_outlined,
+                      onTap: () {},
+                    ),
                     StreamBuilder<Map<String, dynamic>?>(
                       stream: FirestoreService.instance.watchProfile(uid),
                       builder: (context, snap) {
@@ -352,19 +363,19 @@ class TodayHomeScreen extends StatelessWidget {
               sliver: SliverToBoxAdapter(
                 child: Row(
                   children: [
-                    Text("Today's Tasks", style: AppText.h2.copyWith(fontSize: 20)),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text("See all"),
+                    Text(
+                      "Today's Tasks",
+                      style: AppText.h2.copyWith(fontSize: 20),
                     ),
+                    const Spacer(),
+                    TextButton(onPressed: () {}, child: const Text("See all")),
                   ],
                 ),
               ),
             ),
 
             _HabitsStreamList(uid: uid),
-            
+
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
@@ -440,7 +451,10 @@ class _HeaderStatsCard extends StatelessWidget {
               ),
               const Text(
                 "70%",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -470,7 +484,14 @@ class _HorizontalCalendar extends StatelessWidget {
               color: isToday ? Colors.white : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
               border: isToday ? Border.all(color: AppColors.stroke) : null,
-              boxShadow: isToday ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)] : [],
+              boxShadow: isToday
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                      ),
+                    ]
+                  : [],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -511,25 +532,26 @@ class _HabitsStreamList extends StatelessWidget {
       stream: FirestoreService.instance.watchHabits(uid),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
+          return const SliverToBoxAdapter(
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
-        final habits = (snap.data ?? []).where((h) => (h['isActive'] ?? true) == true).toList();
+        final habits = (snap.data ?? [])
+            .where((h) => (h['isActive'] ?? true) == true)
+            .toList();
 
         if (habits.isEmpty) {
           return const SliverToBoxAdapter(child: _EmptyState());
         }
 
         return SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final h = habits[index];
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: _FancyHabitCard(uid: uid, h: h),
-              );
-            },
-            childCount: habits.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final h = habits[index];
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: _FancyHabitCard(uid: uid, h: h),
+            );
+          }, childCount: habits.length),
         );
       },
     );
@@ -585,14 +607,19 @@ class _ProfileAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
+        ],
       ),
       child: CircleAvatar(
         radius: 22,
         backgroundColor: AppColors.primarySoft,
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : "U",
-          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
         ),
       ),
     );
@@ -633,7 +660,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 40),
-          Icon(Icons.wb_sunny_outlined, size: 64, color: Colors.orange.shade200),
+          Icon(
+            Icons.wb_sunny_outlined,
+            size: 64,
+            color: Colors.orange.shade200,
+          ),
           const SizedBox(height: 16),
           Text("No habits for today", style: AppText.muted),
         ],
@@ -649,7 +680,8 @@ class _AuthFallback extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: TextButton(
-          onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, AppRoutes.login),
           child: const Text('Sign in again'),
         ),
       ),
