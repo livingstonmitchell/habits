@@ -20,6 +20,9 @@ dependencies:
   image_picker: ^1.1.2
   permission_handler: ^11.3.1
 
+  just_audio: ^0.9.39
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -31,3 +34,10 @@ flutter:
     - assets/lottie/welcome.json
     - assets/lottie/secure.json
     - assets/lottie/get_started.json
+    - assets/audio/change_me.mp3
+    - assets/audio/close_to_you.mp3
+
+
+
+
+

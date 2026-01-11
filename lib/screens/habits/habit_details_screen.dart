@@ -15,18 +15,20 @@ import '../../features/habits/habit_detail_helpers/note_card.dart';
 import '../../features/habits/habit_detail_helpers/recent_grid.dart';
 import '../../features/habits/habit_detail_helpers/streak_card.dart';
 
+// ✅ NEW: meditation session screen
+import '../meditation/meditation_session_screen.dart';
+
 class HabitDetailsScreen extends StatefulWidget {
   final HabitDetailsArgs args;
 
   HabitDetailsScreen({super.key, HabitDetailsArgs? args})
-    : args =
-          args ??
-          HabitDetailsArgs(
-            habitId: 'demo-habit',
-            title: 'Habit Details',
-            emoji: '🔥',
-            habitType: HabitType.completionOnly,
-          );
+      : args = args ??
+            HabitDetailsArgs(
+              habitId: 'demo-habit',
+              title: 'Habit Details',
+              emoji: '🔥',
+              habitType: HabitType.completionOnly,
+            );
 
   @override
   State<HabitDetailsScreen> createState() => _HabitDetailsScreenState();
@@ -44,12 +46,167 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     super.dispose();
   }
 
+  bool _isMeditationHabit({
+    required String title,
+    required String emoji,
+    required HabitType type,
+  }) {
+    final t = title.toLowerCase();
+    return t.contains("meditat") || emoji.contains("🧘");
+  }
+
+  Future<void> _openMeditationOptions({
+    required String habitTitle,
+    required String habitEmoji,
+  }) async {
+    bool quotes = true;
+    bool music = false;
+
+    final result = await showModalBottomSheet<Map<String, bool>>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheet) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 5,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.stroke,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Text("Meditation session", style: AppText.h2),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.stroke),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(habitEmoji, style: const TextStyle(fontSize: 22)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              habitTitle,
+                              style: const TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: quotes,
+                      onChanged: (v) => setSheet(() => quotes = v),
+                      title: const Text("Quotes"),
+                      subtitle: const Text("Show mindful quotes while you meditate"),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: music,
+                      onChanged: (v) => setSheet(() => music = v),
+                      title: const Text("Music"),
+                      subtitle: const Text("Play calm music while meditating (UI only)"),
+                    ),
+
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () {
+                          if (!quotes && !music) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Choose Quotes or Music to continue."),
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.pop(context, {"quotes": quotes, "music": music});
+                        },
+                        child: const Text(
+                          "Start session",
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || result == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MeditationSessionScreen(
+          title: habitTitle,
+          emoji: habitEmoji,
+          quotesEnabled: result["quotes"] == true,
+          musicEnabled: result["music"] == true,
+          onFinish: () async {
+            // ✅ OPTIONAL: when session finishes, auto mark today complete for completionOnly habits
+            // If you want this auto-log always, tell me and I’ll finalize the logic.
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleToday({
     required HabitLog todayLog,
     required HabitType type,
     required int goal,
     required String unitLabel,
+    required String habitTitle,
+    required String habitEmoji,
   }) async {
+    // ✅ Meditation special behavior
+    if (_isMeditationHabit(title: habitTitle, emoji: habitEmoji, type: type)) {
+      await _openMeditationOptions(habitTitle: habitTitle, habitEmoji: habitEmoji);
+      return;
+    }
+
     if (type != HabitType.completionOnly) {
       await _promptProgressDialog(
         todayLog: todayLog,
@@ -62,9 +219,9 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
 
     final uid = _uid;
     if (uid == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please sign in again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in again.')),
+      );
       return;
     }
 
@@ -127,9 +284,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Amount to add',
-                  helperText: goal > 0
-                      ? 'Goal: $goal $unitLabel'
-                      : 'No goal set',
+                  helperText: goal > 0 ? 'Goal: $goal $unitLabel' : 'No goal set',
                 ),
               ),
               const SizedBox(height: 12),
@@ -188,9 +343,9 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   }) async {
     final uid = _uid;
     if (uid == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please sign in again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in again.')),
+      );
       return;
     }
 
@@ -247,29 +402,28 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = _uid;
-    if (uid == null)
+    if (uid == null) {
       return const Scaffold(body: Center(child: Text("Sign in required")));
+    }
 
     return StreamBuilder<Map<String, dynamic>?>(
       stream: FirestoreService.instance.watchHabit(uid, widget.args.habitId),
       builder: (context, habitSnap) {
         final data = habitSnap.data;
-        final hType =
-            _habitTypeFromValue(data?['habitType']) ?? widget.args.habitType;
-        final hGoal =
-            _intFromValue(data?['goalValue']) ?? widget.args.goalValue ?? 1;
-        final hUnit = data?['unitLabel'] ?? widget.args.unitLabel ?? 'times';
+
+        final title = (data?['title'] ?? widget.args.title).toString();
+        final emoji = (data?['emoji'] ?? widget.args.emoji).toString();
+
+        final hType = _habitTypeFromValue(data?['habitType']) ?? widget.args.habitType;
+        final hGoal = _intFromValue(data?['goalValue']) ?? widget.args.goalValue ?? 1;
+        final hUnit = (data?['unitLabel'] ?? widget.args.unitLabel ?? 'times').toString();
 
         return StreamBuilder<List<HabitLog>>(
-          stream: FirestoreService.instance.watchHabitLogs(
-            uid,
-            widget.args.habitId,
-          ),
+          stream: FirestoreService.instance.watchHabitLogs(uid, widget.args.habitId),
           builder: (context, logSnap) {
-            if (!logSnap.hasData)
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+            if (!logSnap.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
 
             final logs = logSnap.data!;
             final todayKey = dateKey(dateOnly(DateTime.now()));
@@ -293,10 +447,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                   CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
-                      _buildAppBar(
-                        data?['title'] ?? widget.args.title,
-                        data?['emoji'] ?? widget.args.emoji,
-                      ),
+                      _buildAppBar(title, emoji),
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 20, 16, 150),
                         sliver: SliverList(
@@ -332,7 +483,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                       ),
                     ],
                   ),
-                  _buildFloatingAction(todayLog, hType, hGoal, hUnit),
+                  _buildFloatingAction(todayLog, hType, hGoal, hUnit, title, emoji),
                 ],
               ),
             );
@@ -369,35 +520,57 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     HabitType type,
     int goal,
     String unit,
+    String habitTitle,
+    String habitEmoji,
   ) {
     final isDone = todayLog.isCompleted;
+
+    final isMeditation = _isMeditationHabit(
+      title: habitTitle,
+      emoji: habitEmoji,
+      type: type,
+    );
+
+    final label = _toggling
+        ? "Updating..."
+        : (isMeditation
+            ? "Start Meditation"
+            : (isDone ? "Completed Today" : "Log Progress"));
+
     return Positioned(
       bottom: 30,
       left: 20,
       right: 20,
       child: AppButton(
-        text: _toggling
-            ? "Updating..."
-            : (isDone ? "Completed Today" : "Log Progress"),
+        text: label,
         color: isDone ? Colors.green : AppColors.primary,
         onTap: _toggling
             ? null
             : () => _toggleToday(
-                todayLog: todayLog,
-                type: type,
-                goal: goal,
-                unitLabel: unit,
-              ),
+                  todayLog: todayLog,
+                  type: type,
+                  goal: goal,
+                  unitLabel: unit,
+                  habitTitle: habitTitle,
+                  habitEmoji: habitEmoji,
+                ),
       ),
     );
   }
 }
 
+/// ✅ FIXED: robust habit type parsing
 HabitType? _habitTypeFromValue(dynamic v) {
-  if (v == 'completionOnly' || v == HabitType.completionOnly)
-    return HabitType.completionOnly;
-  return HabitType.count;
+  if (v == null) return null;
+
+  if (v is HabitType) return v;
+
+  final s = v.toString().trim();
+  for (final t in HabitType.values) {
+    if (t.name == s) return t;
+    if (t.name.toLowerCase() == s.toLowerCase()) return t;
+  }
+  return null;
 }
 
-int? _intFromValue(dynamic v) =>
-    v is int ? v : int.tryParse(v?.toString() ?? '');
+int? _intFromValue(dynamic v) => v is int ? v : int.tryParse(v?.toString() ?? '');
