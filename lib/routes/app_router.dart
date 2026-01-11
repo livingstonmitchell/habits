@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:habits_app/features/onboarding_screen.dart';
+import 'package:habits_app/screens/habits/calender_screen.dart';
 import '../auth/splash_screen.dart';
 import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
@@ -9,11 +11,13 @@ import '../profile_page.dart';
 class AppRoutes {
   // Route names
   static const String splash = '/splash';
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
   static const String resetPassword = '/reset-password';
   static const String userDashboard = '/user';
   static const String userProfile = '/user/profile';
+  static const calendar = '/calendar';
 
   static String get initialRoute => splash;
 
@@ -21,11 +25,13 @@ class AppRoutes {
   static Map<String, WidgetBuilder> get routes => {
     '/': (_) => const SplashScreen(),
     splash: (_) => const SplashScreen(),
+    onboarding: (_) => const OnboardingScreen(),
     login: (_) => const LoginScreen(),
     register: (_) => const RegisterScreen(),
     resetPassword: (_) => const ResetPasswordScreen(),
     userDashboard: (_) => const MainLayout(),
     userProfile: (_) => const ProfilePage(),
+    calendar: (_) => const CalendarScreen(),
   };
 
 }

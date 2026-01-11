@@ -1,42 +1,83 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// Tiny in-memory auth helper for the starter template.
-/// Replace with Firebase/Auth0/etc. when wiring real auth.
+/// Firebase-backed auth helper used across the app.
+/// Keeps the same simple API as the starter version.
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  bool _signedIn = false;
-  String? _email;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  bool get isSignedIn => _signedIn;
-  String? get email => _email;
+  // =========================
+  // STATE
+  // =========================
 
-  Future<void> signIn({required String email, required String password}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    _signedIn = true;
-    _email = email;
-    debugPrint('Signed in as $email');
-  }
+  User? get currentUser => _auth.currentUser;
+  bool get isSignedIn => _auth.currentUser != null;
+  String? get email => _auth.currentUser?.email;
 
-  Future<void> register({
+  Stream<User?> authStateChanges() => _auth.authStateChanges();
+
+  // =========================
+  // AUTH ACTIONS
+  // =========================
+
+  Future<UserCredential> signIn({
     required String email,
     required String password,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    _signedIn = true;
-    _email = email;
-    debugPrint('Registered $email');
+    if (email.isEmpty || password.isEmpty) {
+      throw ArgumentError('Email and password are required');
+    }
+
+    try {
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      debugPrint('Signed in as ${cred.user?.email}');
+      return cred;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Sign-in failed: ${e.code} ${e.message}');
+      rethrow;
+    }
+  }
+
+  Future<UserCredential> register({
+    required String email,
+    required String password,
+  }) async {
+    if (email.isEmpty || password.isEmpty) {
+      throw ArgumentError('Email and password are required');
+    }
+
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      debugPrint('Registered ${cred.user?.email}');
+      return cred;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Registration failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
   Future<void> sendPasswordReset(String email) async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (email.isEmpty) {
+      throw ArgumentError('Email is required');
+    }
+
+    await _auth.sendPasswordResetEmail(email: email);
     debugPrint('Password reset sent to $email');
   }
 
   Future<void> signOut() async {
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    _signedIn = false;
-    _email = null;
+    await _auth.signOut();
+    debugPrint('Signed out');
   }
 }
