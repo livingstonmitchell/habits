@@ -1,296 +1,28 @@
-// import 'package:flutter/material.dart';
-// import 'package:habits_app/utils/widgets/habitcard.dart';
-// import 'package:habits_app/utils/routes/app_router.dart';
-// import 'package:habits_app/services/auth_service.dart';
-// import 'package:habits_app/services/firestore_service.dart';
-// import 'package:habits_app/utils/theme.dart';
-// import 'package:habits_app/models/habit_models.dart';
-// import 'package:intl/intl.dart' show DateFormat;
-
-// class TodayHomeScreen extends StatelessWidget {
-//   const TodayHomeScreen({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final user = AuthService.instance.currentUser;
-//     if (user == null) {
-//       // Render a safe fallback instead of navigating from build to avoid
-//       // scheduler errors when the view gets disposed on web/hot-restart.
-//       return Scaffold(
-//         body: Center(
-//           child: Column(
-//             mainAxisSize: MainAxisSize.min,
-//             children: [
-//               const CircularProgressIndicator(),
-//               const SizedBox(height: 12),
-//               TextButton(
-//                 onPressed: () =>
-//                     Navigator.pushReplacementNamed(context, AppRoutes.login),
-//                 child: const Text('Sign in again'),
-//               ),
-//             ],
-//           ),
-//         ),
-//       );
-//     }
-
-//     final uid = user.uid;
-//     final todayLabel = DateFormat('EEE, MMM d').format(DateTime.now());
-
-//     return Scaffold(
-//       floatingActionButton: FloatingActionButton(
-//         onPressed: () => Navigator.pushNamed(context, AppRoutes.addHabit),
-//         child: const Icon(Icons.add),
-//       ),
-//       body: SafeArea(
-//         child: SingleChildScrollView(
-//           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-//           child: Column(
-//             children: [
-//               // ✅ Dribbble-ish header: Stack + avatar overlap + greeting
-//               StreamBuilder<Map<String, dynamic>?>(
-//                 stream: FirestoreService.instance.watchProfile(uid),
-//                 builder: (context, snap) {
-//                   final profile = snap.data ?? {};
-//                   final name = (profile['displayName'] ?? 'Friend').toString();
-
-//                   return Stack(
-//                     children: [
-//                       Container(
-//                         width: double.infinity,
-//                         padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-//                         decoration: BoxDecoration(
-//                           color: Colors.white,
-//                           borderRadius: BorderRadius.circular(26),
-//                           border: Border.all(color: AppColors.stroke),
-//                         ),
-//                         child: Column(
-//                           crossAxisAlignment: CrossAxisAlignment.start,
-//                           children: [
-//                             Row(
-//                               children: [
-//                                 _RoundIconButton(
-//                                   icon: Icons.grid_view_rounded,
-//                                   onTap: () {},
-//                                 ),
-//                                 const Spacer(),
-//                                 _RoundIconButton(
-//                                   icon: Icons.calendar_month_rounded,
-//                                   onTap: () {},
-//                                 ),
-//                               ],
-//                             ),
-//                             const SizedBox(height: 14),
-//                             Text("Hello, $name", style: AppText.h1),
-//                             const SizedBox(height: 6),
-//                             Text("Today • $todayLabel", style: AppText.muted),
-//                             const SizedBox(height: 14),
-//                             Container(
-//                               padding: const EdgeInsets.symmetric(
-//                                 horizontal: 14,
-//                                 vertical: 12,
-//                               ),
-//                               decoration: BoxDecoration(
-//                                 color: AppColors.bg,
-//                                 borderRadius: BorderRadius.circular(18),
-//                                 border: Border.all(color: AppColors.stroke),
-//                               ),
-//                               child: Row(
-//                                 children: [
-//                                   Container(
-//                                     height: 38,
-//                                     width: 38,
-//                                     decoration: BoxDecoration(
-//                                       color: AppColors.primarySoft,
-//                                       borderRadius: BorderRadius.circular(14),
-//                                     ),
-//                                     child: const Icon(
-//                                       Icons.notifications_none_rounded,
-//                                       color: AppColors.primary,
-//                                     ),
-//                                   ),
-//                                   const SizedBox(width: 10),
-//                                   Expanded(
-//                                     child: Text(
-//                                       "Quick tip: Tap + to add a habit, then check in daily.",
-//                                       style: AppText.muted,
-//                                     ),
-//                                   ),
-//                                 ],
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       ),
-//                       Positioned(
-//                         right: 18,
-//                         top: 62,
-//                         child: CircleAvatar(
-//                           radius: 26,
-//                           backgroundColor: Colors.white,
-//                           child: CircleAvatar(
-//                             radius: 23,
-//                             backgroundColor: AppColors.primarySoft,
-//                             child: Text(
-//                               name.isNotEmpty
-//                                   ? name.substring(0, 1).toUpperCase()
-//                                   : "U",
-//                               style: const TextStyle(
-//                                 fontWeight: FontWeight.w900,
-//                               ),
-//                             ),
-//                           ),
-//                         ),
-//                       ),
-//                     ],
-//                   );
-//                 },
-//               ),
-
-//               const SizedBox(height: 16),
-//               Row(
-//                 children: [
-//                   Text("Your habits", style: AppText.h2),
-//                   const Spacer(),
-//                   TextButton(
-//                     onPressed: () =>
-//                         Navigator.pushNamed(context, AppRoutes.addHabit),
-//                     child: const Text("Add"),
-//                   ),
-//                 ],
-//               ),
-
-//               StreamBuilder<List<Map<String, dynamic>>>(
-//                 stream: FirestoreService.instance.watchHabits(uid),
-//                 builder: (context, snap) {
-//                   if (snap.connectionState == ConnectionState.waiting) {
-//                     return const Padding(
-//                       padding: EdgeInsets.only(top: 20),
-//                       child: Center(child: CircularProgressIndicator()),
-//                     );
-//                   }
-
-//                   final habits = (snap.data ?? [])
-//                       .where((h) => (h['isActive'] ?? true) == true)
-//                       .toList();
-
-//                   if (habits.isEmpty) {
-//                     return Padding(
-//                       padding: const EdgeInsets.only(top: 14),
-//                       child: Card(
-//                         child: Padding(
-//                           padding: const EdgeInsets.all(16),
-//                           child: Row(
-//                             children: [
-//                               const Icon(Icons.lightbulb_outline),
-//                               const SizedBox(width: 10),
-//                               Expanded(
-//                                 child: Text(
-//                                   "No active habits. Tap + to add one.",
-//                                   style: AppText.muted,
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                         ),
-//                       ),
-//                     );
-//                   }
-
-//                   return Column(
-//                     children: habits.map((h) {
-//                       final habitId = h['id'] as String;
-//                       final title = (h['title'] ?? '').toString();
-//                       final emoji = (h['emoji'] ?? '✨').toString();
-//                       final color = (h['color'] is int)
-//                           ? (h['color'] as int)
-//                           : AppColors.primary.value;
-
-//                       return StreamBuilder<bool>(
-//                         stream: FirestoreService.instance.watchCompletedToday(
-//                           uid,
-//                           habitId,
-//                         ),
-//                         builder: (context, doneSnap) {
-//                           final done = doneSnap.data ?? false;
-
-//                           return Padding(
-//                             padding: const EdgeInsets.only(bottom: 10),
-//                             child: HabitCard(
-//                               title: title,
-//                               subtitle: (h['frequency'] ?? 'daily').toString(),
-//                               emoji: emoji,
-//                               color: color,
-//                               checkedToday: done,
-//                               onOpen: () => Navigator.pushNamed(
-//                                 context,
-//                                 AppRoutes.habitDetails,
-//                                 arguments: HabitDetailsArgs(
-//                                   habitId: habitId,
-//                                   title: title.isEmpty ? 'Habit' : title,
-//                                   emoji: emoji,
-//                                   habitType: HabitType.completionOnly,
-//                                   goalValue: h['targetPerDay'] is int
-//                                       ? h['targetPerDay'] as int
-//                                       : int.tryParse('${h['targetPerDay']}'),
-//                                 ),
-//                               ),
-//                               onToggle: () => FirestoreService.instance
-//                                   .toggleToday(uid, habitId),
-//                               habit: null,
-//                             ),
-//                           );
-//                         },
-//                       );
-//                     }).toList(),
-//                   );
-//                 },
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _RoundIconButton extends StatelessWidget {
-//   final IconData icon;
-//   final VoidCallback onTap;
-
-//   const _RoundIconButton({required this.icon, required this.onTap});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return InkWell(
-//       onTap: onTap,
-//       borderRadius: BorderRadius.circular(999),
-//       child: Container(
-//         height: 42,
-//         width: 42,
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(999),
-//           border: Border.all(color: AppColors.stroke),
-//         ),
-//         child: Icon(icon, size: 20),
-//       ),
-//     );
-//   }
-// }
-
-import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:habits_app/utils/widgets/habitcard.dart';
-import 'package:habits_app/utils/routes/app_router.dart';
+import 'package:habits_app/models/habit_models.dart';
+import 'package:habits_app/screens/habits/category_habits_screen.dart';
 import 'package:habits_app/services/auth_service.dart';
 import 'package:habits_app/services/firestore_service.dart';
+import 'package:habits_app/utils/routes/app_router.dart';
 import 'package:habits_app/utils/theme.dart';
-import 'package:habits_app/models/habit_models.dart';
+import 'package:habits_app/utils/widgets/habitcard.dart';
 import 'package:intl/intl.dart';
 
-class TodayHomeScreen extends StatelessWidget {
+class TodayHomeScreen extends StatefulWidget {
   const TodayHomeScreen({super.key});
+
+  @override
+  State<TodayHomeScreen> createState() => _TodayHomeScreenState();
+}
+
+class _TodayHomeScreenState extends State<TodayHomeScreen> {
+  String _tab = "All"; // All / Habits / Nutrition / Sleep
+  String _search = "";
+
+  bool _showOnlyActive = true;
+  String _freqFilter = "all"; // all / daily / weekly
+  String _sort = "newest"; // newest / title
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -299,34 +31,182 @@ class TodayHomeScreen extends StatelessWidget {
     return "Good Evening";
   }
 
+  // ====== UI-only category inference (no schema changes) ======
+  String _categoryOf(Map<String, dynamic> h) {
+    final title = (h['title'] ?? '').toString().toLowerCase();
+    final emoji = (h['emoji'] ?? '').toString();
+
+    bool hasAny(List<String> w) => w.any((x) => title.contains(x));
+
+    if (emoji.contains('🏃') ||
+        emoji.contains('🏋') ||
+        hasAny(['run', 'walk', 'gym', 'exercise', 'workout', 'fitness', 'steps'])) {
+      return "Fitness";
+    }
+    if (emoji.contains('💧') ||
+        emoji.contains('🍎') ||
+        hasAny(['water', 'hydrate', 'diet', 'food', 'nutrition', 'protein', 'fruit', 'veg'])) {
+      return "Nutrition";
+    }
+    if (emoji.contains('😴') || hasAny(['sleep', 'bed', 'rest'])) {
+      return "Sleep";
+    }
+    if (emoji.contains('🧘') ||
+        emoji.contains('🧠') ||
+        hasAny(['meditate', 'meditation', 'mindful', 'calm', 'breath', 'gratitude', 'mental'])) {
+      return "Mental health";
+    }
+    if (emoji.contains('📚') ||
+        hasAny(['study', 'read', 'journal', 'learn', 'plan', 'focus', 'budget', 'product'])) {
+      return "Productivity";
+    }
+    return "Lifestyle";
+  }
+
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 5,
+                  width: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.stroke,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Text("Filter & Sort", style: AppText.h2),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  value: _showOnlyActive,
+                  onChanged: (v) => setState(() => _showOnlyActive = v),
+                  title: const Text("Show only active habits"),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 10),
+                const _SheetGroupTitle("Frequency"),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  children: [
+                    _Pill(
+                      text: "All",
+                      selected: _freqFilter == "all",
+                      onTap: () => setState(() => _freqFilter = "all"),
+                    ),
+                    _Pill(
+                      text: "Daily",
+                      selected: _freqFilter == "daily",
+                      onTap: () => setState(() => _freqFilter = "daily"),
+                    ),
+                    _Pill(
+                      text: "Weekly",
+                      selected: _freqFilter == "weekly",
+                      onTap: () => setState(() => _freqFilter = "weekly"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const _SheetGroupTitle("Sort"),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  children: [
+                    _Pill(
+                      text: "Newest",
+                      selected: _sort == "newest",
+                      onTap: () => setState(() => _sort = "newest"),
+                    ),
+                    _Pill(
+                      text: "Title",
+                      selected: _sort == "title",
+                      onTap: () => setState(() => _sort = "title"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Done"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> habits) {
+    var list = habits;
+
+    if (_showOnlyActive) {
+      list = list.where((h) => (h['isActive'] ?? true) == true).toList();
+    }
+
+    if (_freqFilter != "all") {
+      list = list.where((h) => (h['frequency'] ?? 'daily').toString() == _freqFilter).toList();
+    }
+
+    if (_search.trim().isNotEmpty) {
+      final q = _search.trim().toLowerCase();
+      list = list.where((h) => (h['title'] ?? '').toString().toLowerCase().contains(q)).toList();
+    }
+
+    if (_sort == "title") {
+      list.sort((a, b) => (a['title'] ?? '').toString().compareTo((b['title'] ?? '').toString()));
+    }
+
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.currentUser;
     if (user == null) return const _AuthFallback();
-
     final uid = user.uid;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE), // Ultra-light blue/grey
+      backgroundColor: const Color(0xFFF8F9FE),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 60),
         child: FloatingActionButton(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(32),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
           heroTag: 'home-fab',
           onPressed: () => Navigator.pushNamed(context, AppRoutes.addHabit),
-          // label: const Text(""),
-          child:  Icon(Icons.add_rounded),
           backgroundColor: AppColors.primary,
+          child: const Icon(Icons.add_rounded, color: Colors.white),
         ),
       ),
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // --- Fancy App Bar ---
+            // ===== Top row =====
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
@@ -335,13 +215,17 @@ class TodayHomeScreen extends StatelessWidget {
                   children: [
                     _RoundIconButton(
                       icon: Icons.widgets_outlined,
-                      onTap: () {},
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.addHabit),
                     ),
                     StreamBuilder<Map<String, dynamic>?>(
                       stream: FirestoreService.instance.watchProfile(uid),
                       builder: (context, snap) {
-                        final name = snap.data?['displayName'] ?? 'User';
-                        return _ProfileAvatar(name: name);
+                        final name = (snap.data?['displayName'] ?? 'User').toString();
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.userProfile, arguments: {'tab': 2}),
+                          child: _ProfileAvatar(name: name),
+                        );
                       },
                     ),
                   ],
@@ -349,34 +233,466 @@ class TodayHomeScreen extends StatelessWidget {
               ),
             ),
 
-            // --- Header Card with Progress ---
+            // ===== Search + Filter =====
             SliverToBoxAdapter(
-              child: _HeaderStatsCard(uid: uid, greeting: _getGreeting()),
-            ),
-
-            // --- Horizontal Calendar ---
-            SliverToBoxAdapter(child: _HorizontalCalendar()),
-
-            // --- Habits List ---
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              sliver: SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
                 child: Row(
                   children: [
-                    Text(
-                      "Today's Tasks",
-                      style: AppText.h2.copyWith(fontSize: 20),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.stroke),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.search, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                onChanged: (v) => setState(() => _search = v),
+                                decoration: const InputDecoration(
+                                  hintText: "Search habits, nutrition, sleep...",
+                                  border: InputBorder.none,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const Spacer(),
-                    TextButton(onPressed: () {}, child: const Text("See all")),
+                    const SizedBox(width: 10),
+                    _RoundIconButton(
+                      icon: Icons.tune_rounded,
+                      onTap: _openFilterSheet,
+                    ),
                   ],
                 ),
               ),
             ),
 
-            _HabitsStreamList(uid: uid),
+            // ===== Tabs =====
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: _TabPills(
+                  value: _tab,
+                  onChanged: (v) => setState(() => _tab = v),
+                ),
+              ),
+            ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            // ===== Header card =====
+            SliverToBoxAdapter(
+              child: _HeaderStatsCard(
+                uid: uid,
+                greeting: _getGreeting(),
+                onOpenCalendar: () => Navigator.pushNamed(context, AppRoutes.calendar),
+              ),
+            ),
+
+            // ===== Main content =====
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: FirestoreService.instance.watchHabits(uid),
+              builder: (context, snap) {
+                final rawHabits = snap.data ?? [];
+                final filtered = _applyFilters(rawHabits);
+
+                if (_tab == "Habits") {
+                  return _HabitsListSliver(uid: uid, habits: filtered);
+                }
+
+                final showList = _tab == "All";
+                final showNutrition = _tab == "Nutrition";
+                final showSleep = _tab == "Sleep";
+
+                final fitness = filtered.where((h) => _categoryOf(h) == "Fitness").toList();
+                final lifestyle = filtered.where((h) => _categoryOf(h) == "Lifestyle").toList();
+                final productivity = filtered.where((h) => _categoryOf(h) == "Productivity").toList();
+                final mental = filtered.where((h) => _categoryOf(h) == "Mental health").toList();
+                final nutrition = filtered.where((h) => _categoryOf(h) == "Nutrition").toList();
+                final sleep = filtered.where((h) => _categoryOf(h) == "Sleep").toList();
+
+                return SliverList(
+                  delegate: SliverChildListDelegate(
+                    [
+                      const SizedBox(height: 8),
+
+                      // ======================= A) Start New Habits (MORE) =======================
+                      _SectionHeader(
+                        title: "Start New Habits",
+                        action: "Add",
+                        onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 150, // ✅
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          children: [
+                            // Nutrition
+                            _SuggestionCard(
+                              title: "Drink Water",
+                              subtitle: "Hydration 💧",
+                              emoji: "💧",
+                              category: "Nutrition",
+                              goalText: "8 glasses",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Drink Water",
+                                  "prefillEmoji": "💧",
+                                  "prefillCategory": "Nutrition",
+                                  "prefillGoal": 8,
+                                  "prefillUnit": "glasses",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Eat Fruit",
+                              subtitle: "Vitamins 🍎",
+                              emoji: "🍎",
+                              category: "Nutrition",
+                              goalText: "2 servings",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Eat Fruit",
+                                  "prefillEmoji": "🍎",
+                                  "prefillCategory": "Nutrition",
+                                  "prefillGoal": 2,
+                                  "prefillUnit": "servings",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Eat Veggies",
+                              subtitle: "Healthy 🥦",
+                              emoji: "🥦",
+                              category: "Nutrition",
+                              goalText: "2 servings",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Eat Veggies",
+                                  "prefillEmoji": "🥦",
+                                  "prefillCategory": "Nutrition",
+                                  "prefillGoal": 2,
+                                  "prefillUnit": "servings",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Protein Meal",
+                              subtitle: "Strength 🥩",
+                              emoji: "🥩",
+                              category: "Nutrition",
+                              goalText: "1 time",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Protein Meal",
+                                  "prefillEmoji": "🥩",
+                                  "prefillCategory": "Nutrition",
+                                  "prefillGoal": 1,
+                                  "prefillUnit": "time",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "No Soda",
+                              subtitle: "Better choice 🚫🥤",
+                              emoji: "🚫🥤",
+                              category: "Nutrition",
+                              goalText: "Daily",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "No Soda",
+                                  "prefillEmoji": "🚫🥤",
+                                  "prefillCategory": "Nutrition",
+                                  "prefillHabitType": "completionOnly",
+                                },
+                              ),
+                            ),
+
+                            const SizedBox(width: 16),
+
+                            // Fitness
+                            _SuggestionCard(
+                              title: "Morning Walk",
+                              subtitle: "Steps 🏃",
+                              emoji: "🏃",
+                              category: "Fitness",
+                              goalText: "5000 steps",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Morning Walk",
+                                  "prefillEmoji": "🏃",
+                                  "prefillCategory": "Fitness",
+                                  "prefillGoal": 5000,
+                                  "prefillUnit": "steps",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Running",
+                              subtitle: "Cardio 🏃‍♂️",
+                              emoji: "🏃‍♂️",
+                              category: "Fitness",
+                              goalText: "20 minutes",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Running",
+                                  "prefillEmoji": "🏃‍♂️",
+                                  "prefillCategory": "Fitness",
+                                  "prefillGoal": 20,
+                                  "prefillUnit": "minutes",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Workout",
+                              subtitle: "Gym 🏋️",
+                              emoji: "🏋️",
+                              category: "Fitness",
+                              goalText: "30 minutes",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Workout",
+                                  "prefillEmoji": "🏋️",
+                                  "prefillCategory": "Fitness",
+                                  "prefillGoal": 30,
+                                  "prefillUnit": "minutes",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Stretching",
+                              subtitle: "Mobility 🤸",
+                              emoji: "🤸",
+                              category: "Fitness",
+                              goalText: "10 minutes",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Stretching",
+                                  "prefillEmoji": "🤸",
+                                  "prefillCategory": "Fitness",
+                                  "prefillGoal": 10,
+                                  "prefillUnit": "minutes",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Jump Rope",
+                              subtitle: "Quick cardio 🪢",
+                              emoji: "🪢",
+                              category: "Fitness",
+                              goalText: "10 minutes",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Jump Rope",
+                                  "prefillEmoji": "🪢",
+                                  "prefillCategory": "Fitness",
+                                  "prefillGoal": 10,
+                                  "prefillUnit": "minutes",
+                                },
+                              ),
+                            ),
+
+                            const SizedBox(width: 16),
+
+                            // Mental + Sleep + Productivity (nice extras)
+                            _SuggestionCard(
+                              title: "Meditation",
+                              subtitle: "Calm 🧘",
+                              emoji: "🧘",
+                              category: "Mental health",
+                              goalText: "10 minutes",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Meditation",
+                                  "prefillEmoji": "🧘",
+                                  "prefillCategory": "Mental health",
+                                  "prefillGoal": 10,
+                                  "prefillUnit": "minutes",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Sleep Early",
+                              subtitle: "Recovery 😴",
+                              emoji: "😴",
+                              category: "Sleep",
+                              goalText: "8 hours",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Sleep Early",
+                                  "prefillEmoji": "😴",
+                                  "prefillCategory": "Sleep",
+                                  "prefillGoal": 8,
+                                  "prefillUnit": "hours",
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _SuggestionCard(
+                              title: "Read",
+                              subtitle: "Focus 📚",
+                              emoji: "📚",
+                              category: "Productivity",
+                              goalText: "10 minutes",
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": "Read",
+                                  "prefillEmoji": "📚",
+                                  "prefillCategory": "Productivity",
+                                  "prefillGoal": 10,
+                                  "prefillUnit": "minutes",
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ======================= B) Health widgets (UI only) =======================
+                      _SectionHeader(title: "Health widgets", action: "Customize", onAction: () {}),
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: const [
+                            Expanded(child: _HealthWidgetCard(title: "Heart rate", value: "100 / 60", icon: Icons.favorite_border)),
+                            SizedBox(width: 12),
+                            Expanded(child: _HealthWidgetCard(title: "Blood sugar", value: "100 / 70", icon: Icons.opacity_outlined)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: const [
+                            Expanded(child: _HealthWidgetCard(title: "Water", value: "2 / 8", icon: Icons.water_drop_outlined)),
+                            SizedBox(width: 12),
+                            Expanded(child: _HealthWidgetCard(title: "Sleep", value: "6h 20m", icon: Icons.bedtime_outlined)),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ======================= Categories =======================
+                      if (_tab == "All") ...[
+                        _CategoryStrip(title: "Fitness", items: fitness, uid: uid),
+                        _CategoryStrip(title: "Lifestyle", items: lifestyle, uid: uid),
+                        _CategoryStrip(title: "Productivity", items: productivity, uid: uid),
+                        _CategoryStrip(title: "Mental health", items: mental, uid: uid),
+                        _CategoryStrip(title: "Nutrition", items: nutrition, uid: uid),
+                        _CategoryStrip(title: "Sleep", items: sleep, uid: uid),
+                      ],
+
+                      if (showNutrition) ...[
+                        const SizedBox(height: 6),
+                        _NutritionPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
+                        const SizedBox(height: 14),
+                        _CategoryStrip(title: "Nutrition habits", items: nutrition, uid: uid),
+                        _CategoryStrip(title: "Lifestyle habits", items: lifestyle, uid: uid),
+                        _CategoryStrip(title: "Fitness", items: fitness, uid: uid),
+                      ],
+
+                      if (showSleep) ...[
+                        const SizedBox(height: 6),
+                        _SleepPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
+                        const SizedBox(height: 14),
+                        _CategoryStrip(title: "Sleep habits", items: sleep, uid: uid),
+                        _CategoryStrip(title: "Mental health", items: mental, uid: uid),
+                        _CategoryStrip(title: "Lifestyle", items: lifestyle, uid: uid),
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      // ======================= C) Recent activity =======================
+                      _SectionHeader(
+                        title: "Recent activity",
+                        action: "Calendar",
+                        onAction: () => Navigator.pushNamed(context, AppRoutes.calendar),
+                      ),
+                      const SizedBox(height: 10),
+                      _RecentActivity(uid: uid, habits: filtered),
+
+                      const SizedBox(height: 16),
+
+                      // ======================= Mini week =======================
+                      _SectionHeader(
+                        title: "This week",
+                        action: "Open calendar",
+                        onAction: () => Navigator.pushNamed(context, AppRoutes.calendar),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _MiniWeekRow(
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ======================= D) Habits list on All =======================
+                      if (showList) ...[
+                        _SectionHeader(
+                          title: "Today's Tasks",
+                          action: "Add",
+                          onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
+                        ),
+                        const SizedBox(height: 8),
+                        _HabitsInlineList(uid: uid, habits: filtered),
+                      ],
+
+                      const SizedBox(height: 120),
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -384,29 +700,76 @@ class TodayHomeScreen extends StatelessWidget {
   }
 }
 
-// --- Sub-widgets for a cleaner structure ---
+// ========================= UI blocks =========================
+
+class _TabPills extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _TabPills({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = const ["All", "Habits", "Nutrition", "Sleep"];
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final t = tabs[i];
+          final selected = t == value;
+          return InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => onChanged(t),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: selected ? AppColors.primary : AppColors.stroke),
+              ),
+              child: Text(
+                t,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: selected ? Colors.white : AppColors.text,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class _HeaderStatsCard extends StatelessWidget {
   final String uid;
   final String greeting;
-  const _HeaderStatsCard({required this.uid, required this.greeting});
+  final VoidCallback onOpenCalendar;
+  const _HeaderStatsCard({
+    required this.uid,
+    required this.greeting,
+    required this.onOpenCalendar,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppColors.primary, Color(0xFF6366F1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 20,
+            color: AppColors.primary.withOpacity(0.25),
+            blurRadius: 18,
             offset: const Offset(0, 10),
           ),
         ],
@@ -417,45 +780,338 @@ class _HeaderStatsCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting,
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 4),
+                Text(greeting, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                const SizedBox(height: 6),
                 const Text(
-                  "You're doing\ngreat today!",
+                  "Your rhythm today",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  DateFormat('EEE, MMM d').format(DateTime.now()),
+                  style: const TextStyle(color: Colors.white70),
                 ),
               ],
             ),
           ),
-          // Circular Progress Widget
-          Stack(
-            alignment: Alignment.center,
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: onOpenCalendar,
+            child: Container(
+              height: 44,
+              width: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.22)),
+              ),
+              child: const Icon(Icons.calendar_month_rounded, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String action;
+  final VoidCallback onAction;
+  const _SectionHeader({required this.title, required this.action, required this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      child: Row(
+        children: [
+          Text(title, style: AppText.h2.copyWith(fontSize: 19)),
+          const Spacer(),
+          TextButton(onPressed: onAction, child: Text(action)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuggestionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String emoji;
+  final String category;
+  final String? goalText;
+  final VoidCallback onTap;
+
+  const _SuggestionCard({
+    required this.title,
+    required this.subtitle,
+    required this.emoji,
+    required this.category,
+    required this.onTap,
+    this.goalText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        width: 220,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              height: 52,
+              width: 52,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+            ),
+            const SizedBox(width: 12),
+
+            // ✅ Make the text area flexible so it never overflows
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min, // ✅ prevents vertical overflow
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.muted,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // ✅ Wrap chips but keep them small
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _MiniChip(text: category),
+                      if (goalText != null && goalText!.trim().isNotEmpty)
+                        _MiniChip(text: goalText!, icon: Icons.flag_outlined),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class _MiniChip extends StatelessWidget {
+  final String text;
+  final IconData? icon;
+  const _MiniChip({required this.text, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: AppColors.text),
+            const SizedBox(width: 6),
+          ],
+          Text(text, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthWidgetCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  const _HealthWidgetCard({required this.title, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppText.muted),
+                const SizedBox(height: 6),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- Horizontal category strips (OVERFLOW FIXED) ----------
+class _CategoryStrip extends StatelessWidget {
+  final String title;
+  final List<Map<String, dynamic>> items;
+  final String uid;
+
+  const _CategoryStrip({required this.title, required this.items, required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          title: title,
+          action: "See all",
+          onAction: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CategoryHabitsScreen(
+                  uid: uid,
+                  title: title,
+                  habits: items,
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemBuilder: (context, i) => _CategoryHabitCard(uid: uid, habit: items[i]),
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemCount: items.length.clamp(0, 12),
+          ),
+        ),
+        const SizedBox(height: 14),
+      ],
+    );
+  }
+}
+
+
+class _CategoryHabitCard extends StatelessWidget {
+  final String uid;
+  final Map<String, dynamic> habit;
+
+  const _CategoryHabitCard({required this.uid, required this.habit});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = (habit['title'] ?? '').toString();
+    final emoji = (habit['emoji'] ?? '✨').toString();
+    final color = (habit['color'] is int) ? habit['color'] as int : AppColors.primary.value;
+    final habitId = (habit['id'] ?? '').toString();
+    final freq = (habit['frequency'] ?? 'daily').toString();
+
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              SizedBox(
-                height: 80,
-                width: 80,
-                child: CircularProgressIndicator(
-                  value: 0.7, // Connect this to your real logic
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  color: Colors.white,
-                  strokeWidth: 8,
-                  strokeCap: StrokeCap.round,
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(16),
                 ),
+                child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
               ),
-              const Text(
-                "70%",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+              const Spacer(),
+              StreamBuilder<bool>(
+                stream: FirestoreService.instance.watchCompletedToday(uid, habitId),
+                builder: (context, snap) {
+                  final done = snap.data ?? false;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () => FirestoreService.instance.toggleToday(uid, habitId),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: done ? Color(color).withOpacity(0.10) : AppColors.bg,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: done ? Color(color) : AppColors.stroke),
+                      ),
+                      child: Icon(done ? Icons.check : Icons.add, size: 18, color: done ? Color(color) : AppColors.text),
+                    ),
+                  );
+                },
               ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              Text(freq, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.muted),
             ],
           ),
         ],
@@ -464,127 +1120,270 @@ class _HeaderStatsCard extends StatelessWidget {
   }
 }
 
-class _HorizontalCalendar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 7,
-        itemBuilder: (context, index) {
-          final date = DateTime.now().add(Duration(days: index - 3));
-          final isToday = index == 3;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: 60,
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            decoration: BoxDecoration(
-              color: isToday ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              border: isToday ? Border.all(color: AppColors.stroke) : null,
-              boxShadow: isToday
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  DateFormat('E').format(date),
-                  style: TextStyle(
-                    color: isToday ? AppColors.primary : Colors.grey,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  date.day.toString(),
-                  style: TextStyle(
-                    color: isToday ? Colors.black : Colors.grey,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _HabitsStreamList extends StatelessWidget {
+// ---------- Recent Activity ----------
+class _RecentActivity extends StatelessWidget {
   final String uid;
-  const _HabitsStreamList({required this.uid});
+  final List<Map<String, dynamic>> habits;
+
+  const _RecentActivity({required this.uid, required this.habits});
+
+  static String _dateKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day";
+  }
+
+  static DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  Future<List<_ActivityItem>> _load() async {
+    final now = DateTime.now();
+    final start = _startOfDay(now.subtract(const Duration(days: 6)));
+    final startKey = _dateKey(start);
+
+    final out = <_ActivityItem>[];
+
+    for (final h in habits) {
+      final habitId = (h['id'] ?? '').toString();
+      if (habitId.isEmpty) continue;
+
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('habits')
+          .doc(habitId)
+          .collection('logs')
+          .where('isCompleted', isEqualTo: true)
+          .where('date', isGreaterThanOrEqualTo: startKey)
+          .orderBy('date', descending: true)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) continue;
+
+      final data = snap.docs.first.data();
+      final date = (data['date'] ?? '').toString();
+      if (date.isEmpty) continue;
+
+      out.add(
+        _ActivityItem(
+          habitId: habitId,
+          title: (h['title'] ?? 'Habit').toString(),
+          emoji: (h['emoji'] ?? '✨').toString(),
+          dateKey: date,
+        ),
+      );
+    }
+
+    out.sort((a, b) => b.dateKey.compareTo(a.dateKey));
+    return out.take(8).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: FirestoreService.instance.watchHabits(uid),
+    return FutureBuilder<List<_ActivityItem>>(
+      future: _load(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SliverToBoxAdapter(
-            child: Center(child: CircularProgressIndicator()),
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: LinearProgressIndicator(),
           );
         }
-        final habits = (snap.data ?? [])
-            .where((h) => (h['isActive'] ?? true) == true)
-            .toList();
 
-        if (habits.isEmpty) {
-          return const SliverToBoxAdapter(child: _EmptyState());
+        final items = snap.data ?? [];
+        if (items.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.stroke),
+              ),
+              child: Text("No check-ins yet this week.", style: AppText.muted),
+            ),
+          );
         }
 
-        return SliverList(
-          delegate: SliverChildBuilderDelegate((context, index) {
-            final h = habits[index];
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _FancyHabitCard(uid: uid, h: h),
-            );
-          }, childCount: habits.length),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: items.map((it) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.stroke),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      height: 44,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(child: Text(it.emoji, style: const TextStyle(fontSize: 20))),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(it.title, style: const TextStyle(fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 3),
+                          Text("Checked • ${it.dateKey}", style: AppText.muted),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
         );
       },
     );
   }
 }
 
-class _FancyHabitCard extends StatelessWidget {
-  final String uid;
-  final Map<String, dynamic> h;
-  const _FancyHabitCard({required this.uid, required this.h});
+class _ActivityItem {
+  final String habitId;
+  final String title;
+  final String emoji;
+  final String dateKey;
+  _ActivityItem({required this.habitId, required this.title, required this.emoji, required this.dateKey});
+}
+
+// ---------- Mini week ----------
+class _MiniWeekRow extends StatelessWidget {
+  final VoidCallback onTap;
+  const _MiniWeekRow({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final habitId = h['id'] as String;
+    final today = DateTime.now();
+    final start = today.subtract(Duration(days: today.weekday - 1));
+    final days = List.generate(7, (i) => DateTime(start.year, start.month, start.day + i));
+
+    bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Row(
+          children: days.map((d) {
+            final isToday = sameDay(d, today);
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isToday ? AppColors.primarySoft : AppColors.bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isToday ? AppColors.primary : AppColors.stroke),
+                ),
+                child: Column(
+                  children: [
+                    Text(DateFormat('E').format(d).substring(0, 1), style: AppText.muted),
+                    const SizedBox(height: 6),
+                    Text("${d.day}", style: const TextStyle(fontWeight: FontWeight.w900)),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- Habit lists ----------
+class _HabitsListSliver extends StatelessWidget {
+  final String uid;
+  final List<Map<String, dynamic>> habits;
+  const _HabitsListSliver({required this.uid, required this.habits});
+
+  @override
+  Widget build(BuildContext context) {
+    if (habits.isEmpty) return const SliverToBoxAdapter(child: _EmptyState());
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: _HabitRow(uid: uid, h: habits[index]),
+        ),
+        childCount: habits.length,
+      ),
+    );
+  }
+}
+
+class _HabitsInlineList extends StatelessWidget {
+  final String uid;
+  final List<Map<String, dynamic>> habits;
+  const _HabitsInlineList({required this.uid, required this.habits});
+
+  @override
+  Widget build(BuildContext context) {
+    if (habits.isEmpty) return const _EmptyState();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: habits
+            .map((h) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _HabitRow(uid: uid, h: h),
+                ))
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _HabitRow extends StatelessWidget {
+  final String uid;
+  final Map<String, dynamic> h;
+  const _HabitRow({required this.uid, required this.h});
+
+  @override
+  Widget build(BuildContext context) {
+    final habitId = (h['id'] ?? '').toString();
     return StreamBuilder<bool>(
       stream: FirestoreService.instance.watchCompletedToday(uid, habitId),
-      builder: (context, doneSnap) {
-        final done = doneSnap.data ?? false;
+      builder: (context, snap) {
+        final done = snap.data ?? false;
+
         return HabitCard(
-          title: h['title'] ?? '',
+          title: (h['title'] ?? '').toString(),
           subtitle: (h['frequency'] ?? 'daily').toString(),
-          emoji: h['emoji'] ?? '✨',
-          color: h['color'] ?? AppColors.primary.value,
+          emoji: (h['emoji'] ?? '✨').toString(),
+          color: (h['color'] is int) ? (h['color'] as int) : AppColors.primary.value,
           checkedToday: done,
           onOpen: () => Navigator.pushNamed(
             context,
             AppRoutes.habitDetails,
             arguments: HabitDetailsArgs(
               habitId: habitId,
-              title: h['title'] ?? 'Habit',
-              emoji: h['emoji'] ?? '✨',
+              title: (h['title'] ?? 'Habit').toString(),
+              emoji: (h['emoji'] ?? '✨').toString(),
               habitType: HabitType.completionOnly,
-              goalValue: h['targetPerDay'] ?? 1,
+              goalValue: h['targetPerDay'] is int ? h['targetPerDay'] as int : int.tryParse('${h['targetPerDay']}'),
             ),
           ),
           onToggle: () => FirestoreService.instance.toggleToday(uid, habitId),
@@ -595,37 +1394,7 @@ class _FancyHabitCard extends StatelessWidget {
   }
 }
 
-// --- Supporting UI Components ---
-
-class _ProfileAvatar extends StatelessWidget {
-  final String name;
-  const _ProfileAvatar({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
-        ],
-      ),
-      child: CircleAvatar(
-        radius: 22,
-        backgroundColor: AppColors.primarySoft,
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : "U",
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+// ---------- Top buttons / avatar ----------
 class _RoundIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -643,7 +1412,7 @@ class _RoundIconButton extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: AppColors.stroke.withOpacity(0.5)),
+            border: Border.all(color: AppColors.stroke.withOpacity(0.6)),
           ),
           child: Icon(icon, size: 22, color: Colors.black87),
         ),
@@ -652,22 +1421,38 @@ class _RoundIconButton extends StatelessWidget {
   }
 }
 
+class _ProfileAvatar extends StatelessWidget {
+  final String name;
+  const _ProfileAvatar({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 22,
+      backgroundColor: AppColors.primarySoft,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : "U",
+        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+      ),
+    );
+  }
+}
+
+// ---------- Empty/auth ----------
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          Icon(
-            Icons.wb_sunny_outlined,
-            size: 64,
-            color: Colors.orange.shade200,
-          ),
-          const SizedBox(height: 16),
-          Text("No habits for today", style: AppText.muted),
-        ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Text("Nothing to show here yet.", style: AppText.muted),
       ),
     );
   }
@@ -680,11 +1465,521 @@ class _AuthFallback extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: TextButton(
-          onPressed: () =>
-              Navigator.pushReplacementNamed(context, AppRoutes.login),
+          onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
           child: const Text('Sign in again'),
         ),
       ),
     );
+  }
+}
+
+class _SheetGroupTitle extends StatelessWidget {
+  final String text;
+  const _SheetGroupTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w900)),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  final String text;
+  final bool selected;
+  final VoidCallback onTap;
+  const _Pill({required this.text, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.bg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.stroke),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: selected ? Colors.white : AppColors.text,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ====================== Nutrition + Sleep Panels (UI-only) ======================
+
+class _NutritionPanel extends StatefulWidget {
+  final VoidCallback onOpenHabits;
+  const _NutritionPanel({required this.onOpenHabits});
+
+  @override
+  State<_NutritionPanel> createState() => _NutritionPanelState();
+}
+
+class _NutritionPanelState extends State<_NutritionPanel> {
+  double _intake = 0.55; // UI-only
+  int _waterCups = 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (_intake * 100).round();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text("Daily intake", style: AppText.h2.copyWith(fontSize: 18)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.stroke),
+                      ),
+                      child: Text("$pct%", style: const TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: _intake,
+                    minHeight: 12,
+                    backgroundColor: AppColors.bg,
+                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const _MealRow(title: "Breakfast", subtitle: "Eggs + fruit • 420 kcal"),
+                const SizedBox(height: 8),
+                const _MealRow(title: "Lunch", subtitle: "Chicken + rice • 610 kcal"),
+                const SizedBox(height: 8),
+                const _MealRow(title: "Dinner", subtitle: "Salad + fish • 520 kcal"),
+                const SizedBox(height: 12),
+                const _SoftDivider(),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.water_drop_outlined, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text("Water", style: AppText.body.copyWith(fontWeight: FontWeight.w900))),
+                    _MiniCounter(
+                      valueText: "$_waterCups / 8",
+                      onMinus: () => setState(() => _waterCups = (_waterCups - 1).clamp(0, 8)),
+                      onPlus: () => setState(() => _waterCups = (_waterCups + 1).clamp(0, 8)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: (_waterCups / 8).clamp(0.0, 1.0),
+                    minHeight: 10,
+                    backgroundColor: AppColors.bg,
+                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text("Adjust goal preview", style: AppText.muted),
+                Slider(
+                  value: _intake,
+                  onChanged: (v) => setState(() => _intake = v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _MiniActionCard(
+                  title: "Eat protein",
+                  subtitle: "After workout",
+                  icon: Icons.restaurant_menu,
+                  onTap: () {},
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MiniActionCard(
+                  title: "Fruit snack",
+                  subtitle: "Daily vitamins",
+                  icon: Icons.local_grocery_store_outlined,
+                  onTap: () {},
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: widget.onOpenHabits,
+              child: const Text("Manage nutrition habits"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SleepPanel extends StatefulWidget {
+  final VoidCallback onOpenHabits;
+  const _SleepPanel({required this.onOpenHabits});
+
+  @override
+  State<_SleepPanel> createState() => _SleepPanelState();
+}
+
+class _SleepPanelState extends State<_SleepPanel> {
+  double _sleepScore = 0.72; // UI-only
+  TimeOfDay _bedTime = const TimeOfDay(hour: 22, minute: 30);
+  final List<double> _week = const [0.55, 0.70, 0.62, 0.80, 0.66, 0.90, 0.74];
+
+  Future<void> _pickBedtime() async {
+    final picked = await showTimePicker(context: context, initialTime: _bedTime);
+    if (picked != null) setState(() => _bedTime = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scorePct = (_sleepScore * 100).round();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text("Sleep insights", style: AppText.h2.copyWith(fontSize: 18)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.stroke),
+                      ),
+                      child: Text("$scorePct%", style: const TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          height: 70,
+                          width: 70,
+                          child: CircularProgressIndicator(
+                            value: _sleepScore,
+                            strokeWidth: 7,
+                            backgroundColor: AppColors.bg,
+                            valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                          ),
+                        ),
+                        Text("$scorePct", style: const TextStyle(fontWeight: FontWeight.w900)),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("You're on track", style: TextStyle(fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 6),
+                          Text("Aim for 7–8 hours and a steady bedtime.", style: AppText.muted),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const _SoftDivider(),
+                const SizedBox(height: 12),
+                Text("Last 7 days", style: AppText.muted),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 110,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(7, (i) {
+                      final r = _week[i].clamp(0.0, 1.0);
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bg,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: AppColors.stroke),
+                                    ),
+                                    child: FractionallySizedBox(
+                                      alignment: Alignment.bottomCenter,
+                                      heightFactor: (0.12 + (r * 0.88)).clamp(0.12, 1.0),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text("•", style: AppText.muted.copyWith(fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.bedtime_outlined, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text("Bedtime", style: AppText.body.copyWith(fontWeight: FontWeight.w900))),
+                    TextButton(onPressed: _pickBedtime, child: Text(_bedTime.format(context))),
+                  ],
+                ),
+                Text("Tap time to change bedtime reminder.", style: AppText.muted),
+                const SizedBox(height: 6),
+                Slider(
+                  value: _sleepScore,
+                  onChanged: (v) => setState(() => _sleepScore = v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _MiniActionCard(
+                  title: "Wind down",
+                  subtitle: "5 min breathing",
+                  icon: Icons.self_improvement_outlined,
+                  onTap: () {},
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MiniActionCard(
+                  title: "No phone",
+                  subtitle: "30 min before bed",
+                  icon: Icons.phonelink_erase_outlined,
+                  onTap: () {},
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: widget.onOpenHabits,
+              child: const Text("Manage sleep habits"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MealRow extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _MealRow({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 3),
+                Text(subtitle, style: AppText.muted),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniActionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _MiniActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 42,
+              width: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: AppText.muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniCounter extends StatelessWidget {
+  final String valueText;
+  final VoidCallback onMinus;
+  final VoidCallback onPlus;
+
+  const _MiniCounter({
+    required this.valueText,
+    required this.onMinus,
+    required this.onPlus,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onMinus,
+          child: Container(
+            height: 34,
+            width: 34,
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: const Icon(Icons.remove, size: 18),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(valueText, style: const TextStyle(fontWeight: FontWeight.w900)),
+        const SizedBox(width: 10),
+        InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onPlus,
+          child: Container(
+            height: 34,
+            width: 34,
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: const Icon(Icons.add, size: 18),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SoftDivider extends StatelessWidget {
+  const _SoftDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(height: 1, width: double.infinity, color: AppColors.stroke);
   }
 }

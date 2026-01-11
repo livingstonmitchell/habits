@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:habits_app/features/onboarding_screen.dart';
 import 'package:habits_app/screens/habits/add_habits.dart';
+import 'package:habits_app/screens/habits/calender_screen.dart';
 import 'package:habits_app/screens/progress-screen.dart';
 import '../../auth/splash_screen.dart';
 import '../../auth/login_screen.dart';
@@ -22,6 +23,7 @@ class AppRoutes {
   static const String habitDetails = '/habit/details';
   static const String addHabit = '/habit/add';
   static const String progress = '/progress';
+  static const calendar = '/calendar';
 
   static String get initialRoute => onboarding;
 
@@ -36,6 +38,7 @@ class AppRoutes {
     resetPassword: (_) => const ResetPasswordScreen(),
     userDashboard: (_) => const MainLayout(),
     userProfile: (_) => const ProfilePage(),
+    calendar: (_) => const CalendarScreen(),
     habitDetails: (context) {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is HabitDetailsArgs) {
