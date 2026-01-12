@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:habits_app/utils/theme.dart';
 import 'package:just_audio/just_audio.dart';
@@ -32,7 +33,9 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
   final AudioPlayer _player = AudioPlayer();
   bool _audioReady = false;
   bool _audioError = false;
+  String _audioErrorMsg = "";
 
+  // ✅ IMPORTANT: these strings MUST exactly match your pubspec + file names on disk
   final List<String> _playlist = const [
     'assets/audio/carry_me_kevin_downswell.mp3',
     'assets/audio/casey_j_if_godnothing_but_the_blood.mp3',
@@ -60,15 +63,32 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
     if (!widget.musicEnabled) return;
 
     try {
+      setState(() {
+        _audioReady = false;
+        _audioError = false;
+        _audioErrorMsg = "";
+      });
+
+      // Build playlist
       final sources = _playlist.map((p) => AudioSource.asset(p)).toList();
-      final playlist = ConcatenatingAudioSource(children: sources);
-      await _player.setAudioSource(playlist, initialIndex: 0, initialPosition: Duration.zero);
+      final list = ConcatenatingAudioSource(children: sources);
+
+      await _player.setAudioSource(
+        list,
+        initialIndex: 0,
+        initialPosition: Duration.zero,
+      );
+
       await _player.setLoopMode(LoopMode.all);
+
+      if (!mounted) return;
       setState(() => _audioReady = true);
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _audioError = true;
         _audioReady = false;
+        _audioErrorMsg = e.toString();
       });
     }
   }
@@ -115,7 +135,6 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
         _setRandomQuote();
       }
 
-      // if timer ended -> stop audio
       if (_seconds == 0) {
         _stopAudio();
       }
@@ -126,6 +145,7 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
     if (!widget.musicEnabled) return;
     try {
       await _player.stop();
+      // reset playlist position
       await _player.seek(Duration.zero, index: 0);
     } catch (_) {}
   }
@@ -152,6 +172,13 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
     final m = s ~/ 60;
     final sec = s % 60;
     return "${m.toString().padLeft(2, '0')} min ${sec.toString().padLeft(2, '0')} s";
+  }
+
+  String _prettyTrackName(String path) {
+    // assets/audio/change_me.mp3 -> change me
+    final file = path.split('/').last;
+    final name = file.replaceAll('.mp3', '').replaceAll('_', ' ');
+    return name;
   }
 
   @override
@@ -182,108 +209,175 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
 
             const SizedBox(height: 10),
 
+            // ✅ prevents overflow on smaller screens
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 160,
-                    width: 160,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Center(
-                      child: Text(widget.emoji, style: const TextStyle(fontSize: 70)),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  Text(
-                    _format(_seconds),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  if (widget.musicEnabled)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.35),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withOpacity(0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.music_note_rounded),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _audioError
-                                    ? "Music failed to load (check assets/audio/)"
-                                    : (_audioReady ? "Music ready" : "Loading music..."),
-                                style: const TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                            if (_audioReady && !_audioError)
-                              StreamBuilder<PlayerState>(
-                                stream: _player.playerStateStream,
-                                builder: (context, snap) {
-                                  final playing = snap.data?.playing ?? false;
-                                  return IconButton(
-                                    onPressed: () async {
-                                      if (!widget.musicEnabled) return;
-                                      if (!_audioReady || _audioError) return;
-                                      if (playing) {
-                                        await _player.pause();
-                                      } else {
-                                        await _player.play();
-                                      }
-                                    },
-                                    icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  if (widget.quotesEnabled) ...[
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.35),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withOpacity(0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.format_quote_rounded),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _quote,
-                                style: const TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                          ],
-                        ),
+
+                    Container(
+                      height: 160,
+                      width: 160,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Center(
+                        child: Text(widget.emoji, style: const TextStyle(fontSize: 70)),
                       ),
                     ),
+                    const SizedBox(height: 18),
+
+                    Text(
+                      _format(_seconds),
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ✅ MUSIC CARD
+                    if (widget.musicEnabled)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.35),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: Colors.white.withOpacity(0.25)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.music_note_rounded),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _audioError
+                                          ? "Music failed to load (check pubspec + filenames)"
+                                          : (_audioReady ? "Music ready" : "Loading music..."),
+                                      style: const TextStyle(fontWeight: FontWeight.w800),
+                                    ),
+                                  ),
+                                  if (_audioReady && !_audioError)
+                                    StreamBuilder<PlayerState>(
+                                      stream: _player.playerStateStream,
+                                      builder: (context, snap) {
+                                        final playing = snap.data?.playing ?? false;
+                                        return IconButton(
+                                          onPressed: () async {
+                                            if (!_audioReady || _audioError) return;
+                                            if (playing) {
+                                              await _player.pause();
+                                            } else {
+                                              await _player.play();
+                                            }
+                                          },
+                                          icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+
+                              if (_audioReady && !_audioError) ...[
+                                const SizedBox(height: 8),
+                                StreamBuilder<int?>(
+                                  stream: _player.currentIndexStream,
+                                  builder: (context, snap) {
+                                    final idx = snap.data ?? 0;
+                                    final path = _playlist[idx.clamp(0, _playlist.length - 1)];
+                                    return Text(
+                                      "Now playing: ${_prettyTrackName(path)}",
+                                      style: AppText.muted.copyWith(fontWeight: FontWeight.w800),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () async {
+                                        try {
+                                          await _player.seekToPrevious();
+                                        } catch (_) {}
+                                      },
+                                      icon: const Icon(Icons.skip_previous),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      onPressed: () async {
+                                        try {
+                                          await _player.seekToNext();
+                                        } catch (_) {}
+                                      },
+                                      icon: const Icon(Icons.skip_next),
+                                    ),
+                                    const Spacer(),
+                                    if (kIsWeb)
+                                      Text(
+                                        "Web audio ✓",
+                                        style: AppText.muted.copyWith(fontSize: 12),
+                                      ),
+                                  ],
+                                ),
+                              ],
+
+                              if (_audioError) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  _audioErrorMsg,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.muted.copyWith(fontSize: 12),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // ✅ QUOTES CARD
+                    if (widget.quotesEnabled) ...[
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.35),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: Colors.white.withOpacity(0.25)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.format_quote_rounded),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _quote,
+                                  style: const TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
                   ],
-                ],
+                ),
               ),
             ),
 
