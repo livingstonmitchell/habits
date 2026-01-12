@@ -8,14 +8,13 @@ import '../../services/firestore_service.dart';
 import '../../utils/streak_utils.dart';
 import '../../models/habit_models.dart';
 import '../../features/habits/habit_detail_helpers/goal_card.dart';
-//import '../../features/habits/habit_detail_helpers/helpers.dart';
 import '../../features/habits/habit_detail_helpers/history_list.dart';
 import '../../features/habits/habit_detail_helpers/model.dart';
 import '../../features/habits/habit_detail_helpers/note_card.dart';
 import '../../features/habits/habit_detail_helpers/recent_grid.dart';
 import '../../features/habits/habit_detail_helpers/streak_card.dart';
 
-// ✅ NEW: meditation session screen
+// ✅ meditation session screen
 import '../meditation/meditation_session_screen.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
@@ -44,6 +43,55 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   void dispose() {
     _noteController.dispose();
     super.dispose();
+  }
+
+  // =========================
+  // ✅ DELETE HABIT
+  // =========================
+  Future<void> _confirmAndDeleteHabit({
+    required String uid,
+    required String habitId,
+    required String title,
+  }) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete habit?"),
+        content: Text(
+          "This will delete \"$title\" and all its logs.\n\nThis can’t be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      await FirestoreService.instance.deleteHabit(uid, habitId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Habit deleted")),
+      );
+
+      Navigator.pop(context); // go back after delete
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to delete habit: $e")),
+      );
+    }
   }
 
   bool _isMeditationHabit({
@@ -97,7 +145,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
@@ -119,9 +166,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: quotes,
@@ -136,7 +181,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                       title: const Text("Music"),
                       subtitle: const Text("Play calm music while meditating (UI only)"),
                     ),
-
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
@@ -185,8 +229,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
           quotesEnabled: result["quotes"] == true,
           musicEnabled: result["music"] == true,
           onFinish: () async {
-            // ✅ OPTIONAL: when session finishes, auto mark today complete for completionOnly habits
-            // If you want this auto-log always, tell me and I’ll finalize the logic.
+            // optional
           },
         ),
       ),
@@ -201,7 +244,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     required String habitTitle,
     required String habitEmoji,
   }) async {
-    // ✅ Meditation special behavior
     if (_isMeditationHabit(title: habitTitle, emoji: habitEmoji, type: type)) {
       await _openMeditationOptions(habitTitle: habitTitle, habitEmoji: habitEmoji);
       return;
@@ -411,6 +453,19 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       builder: (context, habitSnap) {
         final data = habitSnap.data;
 
+        // If habit was deleted, watchHabit will become null — show message + go back.
+        if (habitSnap.connectionState == ConnectionState.active && data == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text("Habit deleted")),
+            body: Center(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Go back"),
+              ),
+            ),
+          );
+        }
+
         final title = (data?['title'] ?? widget.args.title).toString();
         final emoji = (data?['emoji'] ?? widget.args.emoji).toString();
 
@@ -447,7 +502,15 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                   CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
-                      _buildAppBar(title, emoji),
+                      _buildAppBar(
+                        title: title,
+                        emoji: emoji,
+                        onDelete: () => _confirmAndDeleteHabit(
+                          uid: uid,
+                          habitId: widget.args.habitId,
+                          title: title,
+                        ),
+                      ),
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 20, 16, 150),
                         sliver: SliverList(
@@ -493,11 +556,23 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     );
   }
 
-  Widget _buildAppBar(String title, String emoji) {
+  // ✅ UPDATED AppBar with delete icon
+  Widget _buildAppBar({
+    required String title,
+    required String emoji,
+    required VoidCallback onDelete,
+  }) {
     return SliverAppBar(
       expandedHeight: 180,
       pinned: true,
       backgroundColor: AppColors.primary,
+      actions: [
+        IconButton(
+          tooltip: "Delete habit",
+          onPressed: _toggling ? null : onDelete,
+          icon: const Icon(Icons.delete_outline, color: Colors.white),
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
         title: Text(
@@ -559,7 +634,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   }
 }
 
-/// ✅ FIXED: robust habit type parsing
+/// ✅ robust habit type parsing
 HabitType? _habitTypeFromValue(dynamic v) {
   if (v == null) return null;
 

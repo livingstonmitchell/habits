@@ -4,8 +4,6 @@ import 'package:habits_app/models/habit_models.dart';
 import 'package:habits_app/models/users.dart';
 import 'package:habits_app/utils/streak_utils.dart' as DateUtilsX;
 
-
-
 class FirestoreService {
   FirestoreService._();
   static final instance = FirestoreService._();
@@ -15,44 +13,13 @@ class FirestoreService {
   // =========================
   // USERS
   // =========================
-// 1. Method to watch logs for a specific habit
-Stream<List<HabitLog>> watchHabitLogs(String uid, String habitId) {
-  return _db
-      .collection('users')
-      .doc(uid)
-      .collection('habits')
-      .doc(habitId)
-      .collection('logs')
-      .orderBy('date', descending: true)
-      .limit(60) // Show last 2 months
-      .snapshots()
-      .map((snapshot) =>
-          snapshot.docs.map((doc) => HabitLog.fromSnapshot(doc)).toList());
-}
-
-// 2. Method to update or create a log entry
-Future<void> updateHabitLog(
-  String uid, 
-  String habitId, 
-  String logId, 
-  Map<String, dynamic> data
-) async {
-  await _db
-      .collection('users')
-      .doc(uid)
-      .collection('habits')
-      .doc(habitId)
-      .collection('logs')
-      .doc(logId)
-      .set(data, SetOptions(merge: true));
-}
 
   DocumentReference<Map<String, dynamic>> userDoc(String uid) =>
       _db.collection('users').doc(uid);
 
   /// Supports BOTH styles:
   /// 1) createUserProfile(UserProfile profile)
-  /// 2) createUserProfile(uid:..., displayName:..., email:..., photoUrl:...)
+  /// 2) createUserProfile(profile: null, uid:..., displayName:..., email:..., photoUrl:...)
   Future<void> createUserProfile(
     UserProfile? profile, {
     String? uid,
@@ -76,7 +43,7 @@ Future<void> updateHabitLog(
     }
 
     return userDoc(uid).set({
-      'uid':uid,
+      'uid': uid,
       'displayName': displayName,
       'email': email,
       'photoUrl': photoUrl,
@@ -109,7 +76,6 @@ Future<void> updateHabitLog(
       userDoc(uid).collection('habits');
 
   /// Old structure support: /habits where userId == uid
-  /// (kept so your existing screens won’t break)
   Stream<List<Habit>> watchHabitsFlat(String uid) {
     return _db
         .collection('habits')
@@ -153,13 +119,18 @@ Future<void> updateHabitLog(
     return habitsCol(uid).doc(habitId).update(patch);
   }
 
+  /// ✅ DELETE habit (new structure) + delete its logs too
   Future<void> deleteHabit(String uid, String habitId) async {
-    // delete logs too
-    final logs = await logsCol(uid, habitId).get();
-    for (final d in logs.docs) {
+    final habitRef = habitsCol(uid).doc(habitId);
+
+    // delete logs subcollection
+    final logsSnap = await habitRef.collection('logs').get();
+    for (final d in logsSnap.docs) {
       await d.reference.delete();
     }
-    await habitsCol(uid).doc(habitId).delete();
+
+    // delete habit doc
+    await habitRef.delete();
   }
 
   /// Old flat structure delete
@@ -179,8 +150,39 @@ Future<void> updateHabitLog(
   CollectionReference<Map<String, dynamic>> flatLogsCol() =>
       _db.collection('habit_logs');
 
-  // ---- Watch today log / completed (new structure)
+  // 1. Method to watch logs for a specific habit
+  Stream<List<HabitLog>> watchHabitLogs(String uid, String habitId) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .collection('habits')
+        .doc(habitId)
+        .collection('logs')
+        .orderBy('date', descending: true)
+        .limit(60) // Show last 2 months
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => HabitLog.fromSnapshot(doc)).toList());
+  }
 
+  // 2. Method to update or create a log entry
+  Future<void> updateHabitLog(
+    String uid,
+    String habitId,
+    String logId,
+    Map<String, dynamic> data,
+  ) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('habits')
+        .doc(habitId)
+        .collection('logs')
+        .doc(logId)
+        .set(data, SetOptions(merge: true));
+  }
+
+  // ---- Watch today log / completed (new structure)
   Stream<Map<String, dynamic>?> watchTodayLog(String uid, String habitId) {
     final today = DateUtilsX.dateKey(DateTime.now());
     return logsCol(uid, habitId)
@@ -343,7 +345,7 @@ Future<void> updateHabitLog(
     return {'checked': checkedCount, 'totalLogs': q.docs.length};
   }
 
-  /// New structure weekly summary (from your second code)
+  /// New structure weekly summary
   Future<Map<String, int>> weeklySummary(String uid, {int days = 7}) async {
     final end = DateTime.now();
     final start = end.subtract(Duration(days: days - 1));

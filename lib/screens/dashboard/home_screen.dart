@@ -434,7 +434,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                   );
                 }
 
-                // ✅ Habits-only list
+                // ✅ Habits-only list (NOW supports swipe-to-delete)
                 if (_tab == "Habits") {
                   return _HabitsListSliver(uid: uid, habits: filtered);
                 }
@@ -529,7 +529,6 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           ),
                         ),
 
-                        // ✅ (Optional) Show the suggestion categories quickly inside All too
                         const SizedBox(height: 14),
                         _SectionHeader(
                           title: "Quick ideas",
@@ -564,9 +563,21 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             children: const [
-                              Expanded(child: _HealthWidgetCard(title: "Heart rate", value: "100 / 60", icon: Icons.favorite_border)),
+                              Expanded(
+                                child: _HealthWidgetCard(
+                                  title: "Heart rate",
+                                  value: "100 / 60",
+                                  icon: Icons.favorite_border,
+                                ),
+                              ),
                               SizedBox(width: 12),
-                              Expanded(child: _HealthWidgetCard(title: "Blood sugar", value: "100 / 70", icon: Icons.opacity_outlined)),
+                              Expanded(
+                                child: _HealthWidgetCard(
+                                  title: "Blood sugar",
+                                  value: "100 / 70",
+                                  icon: Icons.opacity_outlined,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -575,9 +586,21 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             children: const [
-                              Expanded(child: _HealthWidgetCard(title: "Water", value: "2 / 8", icon: Icons.water_drop_outlined)),
+                              Expanded(
+                                child: _HealthWidgetCard(
+                                  title: "Water",
+                                  value: "2 / 8",
+                                  icon: Icons.water_drop_outlined,
+                                ),
+                              ),
                               SizedBox(width: 12),
-                              Expanded(child: _HealthWidgetCard(title: "Sleep", value: "6h 20m", icon: Icons.bedtime_outlined)),
+                              Expanded(
+                                child: _HealthWidgetCard(
+                                  title: "Sleep",
+                                  value: "6h 20m",
+                                  icon: Icons.bedtime_outlined,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -611,7 +634,9 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         const SizedBox(height: 8),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _MiniWeekRow(onTap: () => Navigator.pushNamed(context, AppRoutes.calendar)),
+                          child: _MiniWeekRow(
+                            onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
+                          ),
                         ),
 
                         const SizedBox(height: 16),
@@ -622,6 +647,8 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
                         ),
                         const SizedBox(height: 8),
+
+                        // ✅ Inline list now also supports swipe-to-delete
                         _HabitsInlineList(uid: uid, habits: filtered),
 
                         const SizedBox(height: 120),
@@ -858,7 +885,8 @@ class _SuggestionCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
                   Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.muted),
                   const SizedBox(height: 8),
@@ -867,7 +895,8 @@ class _SuggestionCard extends StatelessWidget {
                     runSpacing: 6,
                     children: [
                       _MiniChip(text: category),
-                      if (goalText != null && goalText!.trim().isNotEmpty) _MiniChip(text: goalText!, icon: Icons.flag_outlined),
+                      if (goalText != null && goalText!.trim().isNotEmpty)
+                        _MiniChip(text: goalText!, icon: Icons.flag_outlined),
                     ],
                   ),
                 ],
@@ -951,7 +980,7 @@ class _HealthWidgetCard extends StatelessWidget {
   }
 }
 
-// ✅ NEW: Suggestions Wrap widget (used by the main _tab)
+// ✅ Suggestions Wrap widget (used by the main _tab)
 class _SuggestionsWrap extends StatelessWidget {
   final List<Map<String, String>> items;
   final void Function(String title, String category, String emoji) onPick;
@@ -1242,7 +1271,8 @@ class _RecentActivity extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(it.title, style: const TextStyle(fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(it.title, style: const TextStyle(fontWeight: FontWeight.w900),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 3),
                           Text("Checked • ${it.dateKey}", style: AppText.muted),
                         ],
@@ -1363,40 +1393,100 @@ class _HabitsInlineList extends StatelessWidget {
   }
 }
 
+/// ✅ UPDATED: habit row now supports swipe-to-delete + confirmation
 class _HabitRow extends StatelessWidget {
   final String uid;
   final Map<String, dynamic> h;
   const _HabitRow({required this.uid, required this.h});
 
+  Future<void> _deleteHabit(BuildContext context, String habitId) async {
+    final habitRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('habits')
+        .doc(habitId);
+
+    // delete logs (subcollection)
+    final logsSnap = await habitRef.collection('logs').get();
+    for (final d in logsSnap.docs) {
+      await d.reference.delete();
+    }
+
+    // delete habit doc
+    await habitRef.delete();
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete habit?"),
+        content: const Text("This will remove the habit and its history."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete")),
+        ],
+      ),
+    );
+    return res ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final habitId = (h['id'] ?? '').toString();
-    return StreamBuilder<bool>(
-      stream: FirestoreService.instance.watchCompletedToday(uid, habitId),
-      builder: (context, snap) {
-        final done = snap.data ?? false;
 
-        return HabitCard(
-          title: (h['title'] ?? '').toString(),
-          subtitle: (h['frequency'] ?? 'daily').toString(),
-          emoji: (h['emoji'] ?? '✨').toString(),
-          color: (h['color'] is int) ? (h['color'] as int) : AppColors.primary.value,
-          checkedToday: done,
-          onOpen: () => Navigator.pushNamed(
-            context,
-            AppRoutes.habitDetails,
-            arguments: HabitDetailsArgs(
-              habitId: habitId,
-              title: (h['title'] ?? 'Habit').toString(),
-              emoji: (h['emoji'] ?? '✨').toString(),
-              habitType: HabitType.completionOnly,
-              goalValue: h['targetPerDay'] is int ? h['targetPerDay'] as int : int.tryParse('${h['targetPerDay']}'),
-            ),
-          ),
-          onToggle: () => FirestoreService.instance.toggleToday(uid, habitId),
-          habit: null,
-        );
+    return Dismissible(
+      key: ValueKey("habit-$habitId"),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: Colors.red.shade400,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) async {
+        try {
+          await _deleteHabit(context, habitId);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Habit deleted")),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Delete failed: $e")),
+          );
+        }
       },
+      child: StreamBuilder<bool>(
+        stream: FirestoreService.instance.watchCompletedToday(uid, habitId),
+        builder: (context, snap) {
+          final done = snap.data ?? false;
+
+          return HabitCard(
+            title: (h['title'] ?? '').toString(),
+            subtitle: (h['frequency'] ?? 'daily').toString(),
+            emoji: (h['emoji'] ?? '✨').toString(),
+            color: (h['color'] is int) ? (h['color'] as int) : AppColors.primary.value,
+            checkedToday: done,
+            onOpen: () => Navigator.pushNamed(
+              context,
+              AppRoutes.habitDetails,
+              arguments: HabitDetailsArgs(
+                habitId: habitId,
+                title: (h['title'] ?? 'Habit').toString(),
+                emoji: (h['emoji'] ?? '✨').toString(),
+                habitType: HabitType.completionOnly,
+                goalValue: h['targetPerDay'] is int ? h['targetPerDay'] as int : int.tryParse('${h['targetPerDay']}'),
+              ),
+            ),
+            onToggle: () => FirestoreService.instance.toggleToday(uid, habitId),
+            habit: null,
+          );
+        },
+      ),
     );
   }
 }
@@ -1522,6 +1612,11 @@ class _Pill extends StatelessWidget {
     );
   }
 }
+
+// ====================== Nutrition + Sleep Panels (UI-only) ======================
+// Your _NutritionPanel, _SleepPanel, _MealRow, _MiniActionCard, _MiniCounter, _SoftDivider
+// remain EXACTLY as you pasted them below. (No changes needed)
+
 
 // ====================== Nutrition + Sleep Panels (UI-only) ======================
 // ⚠️ Keep your existing _NutritionPanel, _SleepPanel, _MealRow, _MiniActionCard, _MiniCounter, _SoftDivider here.
