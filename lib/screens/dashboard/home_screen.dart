@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:habits_app/models/habit_models.dart';
@@ -17,7 +19,7 @@ class TodayHomeScreen extends StatefulWidget {
 }
 
 class _TodayHomeScreenState extends State<TodayHomeScreen> {
-  // ✅ MAIN TAB (this controls what shows)
+  // ✅ MAIN TAB
   String _tab =
       "All"; // All / Habits / Nutrition / Sleep / Just Because / For the foodie / House and home / Financials / Health and wellness / In the morning / The night before
   String _search = "";
@@ -25,6 +27,15 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
   bool _showOnlyActive = true;
   String _freqFilter = "all"; // all / daily / weekly
   String _sort = "newest"; // newest / title
+
+  // ✅ Cache preview chips so they don't reshuffle every rebuild
+  late final List<Map<String, String>> _quickIdeasPreviewCache;
+
+  @override
+  void initState() {
+    super.initState();
+    _quickIdeasPreviewCache = _buildRandomQuickIdeasPreview(limit: 3);
+  }
 
   // ✅ Suggestions for the NEW tabs
   static const Map<String, List<Map<String, String>>> _suggestionGroups = {
@@ -105,9 +116,19 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
 
   bool get _isSuggestionTab => _suggestionTabs.contains(_tab);
 
+  // ✅ RANDOM preview builder (cached in initState)
+  List<Map<String, String>> _buildRandomQuickIdeasPreview({int limit = 3}) {
+    final all = _suggestionGroups.entries
+        .expand((e) => e.value.map((it) => {"t": it["t"]!, "e": it["e"]!, "c": e.key}))
+        .toList();
+
+    all.shuffle(Random());
+
+    return all.take(limit).toList();
+  }
+
   List<Map<String, String>> _suggestionItemsForMainTab() {
     if (_tab == "All") {
-      // All = show all suggestion items too (optional)
       return _suggestionGroups.entries
           .expand((e) => e.value.map((it) => {"t": it["t"]!, "e": it["e"]!, "c": e.key}))
           .toList();
@@ -275,6 +296,43 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
     return list;
   }
 
+  Future<void> _confirmDeleteHabit({
+    required String uid,
+    required String habitId,
+    required String title,
+  }) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete habit?"),
+        content: Text("Are you sure you want to delete “$title”? This will remove its history too."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      await FirestoreService.instance.deleteHabit(uid, habitId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Habit deleted")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Could not delete habit: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.currentUser;
@@ -397,7 +455,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                 final rawHabits = snap.data ?? [];
                 final filtered = _applyFilters(rawHabits);
 
-                // ✅ If suggestion tab selected -> show ONLY those suggestion chips (no habits sections)
+                // ✅ Suggestion tab -> show ONLY suggestions
                 if (_isSuggestionTab) {
                   final items = _suggestionItemsForMainTab();
                   return SliverList(
@@ -434,9 +492,13 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                   );
                 }
 
-                // ✅ Habits-only list (NOW supports swipe-to-delete)
+                // ✅ Habits-only list
                 if (_tab == "Habits") {
-                  return _HabitsListSliver(uid: uid, habits: filtered);
+                  return _HabitsListSliver(
+                    uid: uid,
+                    habits: filtered,
+                    onDelete: (habitId, title) => _confirmDeleteHabit(uid: uid, habitId: habitId, title: title),
+                  );
                 }
 
                 final showAll = _tab == "All";
@@ -455,7 +517,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                     [
                       const SizedBox(height: 8),
 
-                      // ✅ All tab: keep your existing content
+                      // ✅ All tab
                       if (showAll) ...[
                         _SectionHeader(
                           title: "Start New Habits",
@@ -530,6 +592,8 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         ),
 
                         const SizedBox(height: 14),
+
+                        // ✅ Quick ideas (PREVIEW ONLY 3 RANDOM)
                         _SectionHeader(
                           title: "Quick ideas",
                           action: "See all",
@@ -539,7 +603,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: _SuggestionsWrap(
-                            items: _suggestionItemsForMainTab(),
+                            items: _quickIdeasPreviewCache, // ✅ only 3 random
                             onPick: (title, category, emoji) {
                               Navigator.pushNamed(
                                 context,
@@ -563,21 +627,9 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             children: const [
-                              Expanded(
-                                child: _HealthWidgetCard(
-                                  title: "Heart rate",
-                                  value: "100 / 60",
-                                  icon: Icons.favorite_border,
-                                ),
-                              ),
+                              Expanded(child: _HealthWidgetCard(title: "Heart rate", value: "100 / 60", icon: Icons.favorite_border)),
                               SizedBox(width: 12),
-                              Expanded(
-                                child: _HealthWidgetCard(
-                                  title: "Blood sugar",
-                                  value: "100 / 70",
-                                  icon: Icons.opacity_outlined,
-                                ),
-                              ),
+                              Expanded(child: _HealthWidgetCard(title: "Blood sugar", value: "100 / 70", icon: Icons.opacity_outlined)),
                             ],
                           ),
                         ),
@@ -586,21 +638,9 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             children: const [
-                              Expanded(
-                                child: _HealthWidgetCard(
-                                  title: "Water",
-                                  value: "2 / 8",
-                                  icon: Icons.water_drop_outlined,
-                                ),
-                              ),
+                              Expanded(child: _HealthWidgetCard(title: "Water", value: "2 / 8", icon: Icons.water_drop_outlined)),
                               SizedBox(width: 12),
-                              Expanded(
-                                child: _HealthWidgetCard(
-                                  title: "Sleep",
-                                  value: "6h 20m",
-                                  icon: Icons.bedtime_outlined,
-                                ),
-                              ),
+                              Expanded(child: _HealthWidgetCard(title: "Sleep", value: "6h 20m", icon: Icons.bedtime_outlined)),
                             ],
                           ),
                         ),
@@ -634,9 +674,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         const SizedBox(height: 8),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _MiniWeekRow(
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
-                          ),
+                          child: _MiniWeekRow(onTap: () => Navigator.pushNamed(context, AppRoutes.calendar)),
                         ),
 
                         const SizedBox(height: 16),
@@ -647,14 +685,16 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                           onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
                         ),
                         const SizedBox(height: 8),
-
-                        // ✅ Inline list now also supports swipe-to-delete
-                        _HabitsInlineList(uid: uid, habits: filtered),
+                        _HabitsInlineList(
+                          uid: uid,
+                          habits: filtered,
+                          onDelete: (habitId, title) => _confirmDeleteHabit(uid: uid, habitId: habitId, title: title),
+                        ),
 
                         const SizedBox(height: 120),
                       ],
 
-                      // ✅ Nutrition tab = only nutrition panel + nutrition habits
+                      // ✅ Nutrition tab
                       if (showNutrition) ...[
                         const SizedBox(height: 6),
                         _NutritionPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
@@ -663,7 +703,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         const SizedBox(height: 120),
                       ],
 
-                      // ✅ Sleep tab = only sleep panel + sleep habits
+                      // ✅ Sleep tab
                       if (showSleep) ...[
                         const SizedBox(height: 6),
                         _SleepPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
@@ -885,8 +925,7 @@ class _SuggestionCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
                   Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.muted),
                   const SizedBox(height: 8),
@@ -895,8 +934,7 @@ class _SuggestionCard extends StatelessWidget {
                     runSpacing: 6,
                     children: [
                       _MiniChip(text: category),
-                      if (goalText != null && goalText!.trim().isNotEmpty)
-                        _MiniChip(text: goalText!, icon: Icons.flag_outlined),
+                      if (goalText != null && goalText!.trim().isNotEmpty) _MiniChip(text: goalText!, icon: Icons.flag_outlined),
                     ],
                   ),
                 ],
@@ -980,7 +1018,7 @@ class _HealthWidgetCard extends StatelessWidget {
   }
 }
 
-// ✅ Suggestions Wrap widget (used by the main _tab)
+// ✅ Suggestions Wrap
 class _SuggestionsWrap extends StatelessWidget {
   final List<Map<String, String>> items;
   final void Function(String title, String category, String emoji) onPick;
@@ -1271,8 +1309,7 @@ class _RecentActivity extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(it.title, style: const TextStyle(fontWeight: FontWeight.w900),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(it.title, style: const TextStyle(fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 3),
                           Text("Checked • ${it.dateKey}", style: AppText.muted),
                         ],
@@ -1352,7 +1389,13 @@ class _MiniWeekRow extends StatelessWidget {
 class _HabitsListSliver extends StatelessWidget {
   final String uid;
   final List<Map<String, dynamic>> habits;
-  const _HabitsListSliver({required this.uid, required this.habits});
+  final void Function(String habitId, String title) onDelete;
+
+  const _HabitsListSliver({
+    required this.uid,
+    required this.habits,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1362,7 +1405,7 @@ class _HabitsListSliver extends StatelessWidget {
       delegate: SliverChildBuilderDelegate(
         (context, index) => Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: _HabitRow(uid: uid, h: habits[index]),
+          child: _HabitRow(uid: uid, h: habits[index], onDelete: onDelete),
         ),
         childCount: habits.length,
       ),
@@ -1373,7 +1416,13 @@ class _HabitsListSliver extends StatelessWidget {
 class _HabitsInlineList extends StatelessWidget {
   final String uid;
   final List<Map<String, dynamic>> habits;
-  const _HabitsInlineList({required this.uid, required this.habits});
+  final void Function(String habitId, String title) onDelete;
+
+  const _HabitsInlineList({
+    required this.uid,
+    required this.habits,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1385,7 +1434,7 @@ class _HabitsInlineList extends StatelessWidget {
         children: habits
             .map((h) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _HabitRow(uid: uid, h: h),
+                  child: _HabitRow(uid: uid, h: h, onDelete: onDelete),
                 ))
             .toList(),
       ),
@@ -1393,80 +1442,31 @@ class _HabitsInlineList extends StatelessWidget {
   }
 }
 
-/// ✅ UPDATED: habit row now supports swipe-to-delete + confirmation
 class _HabitRow extends StatelessWidget {
   final String uid;
   final Map<String, dynamic> h;
-  const _HabitRow({required this.uid, required this.h});
+  final void Function(String habitId, String title) onDelete;
 
-  Future<void> _deleteHabit(BuildContext context, String habitId) async {
-    final habitRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('habits')
-        .doc(habitId);
-
-    // delete logs (subcollection)
-    final logsSnap = await habitRef.collection('logs').get();
-    for (final d in logsSnap.docs) {
-      await d.reference.delete();
-    }
-
-    // delete habit doc
-    await habitRef.delete();
-  }
-
-  Future<bool> _confirmDelete(BuildContext context) async {
-    final res = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Delete habit?"),
-        content: const Text("This will remove the habit and its history."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete")),
-        ],
-      ),
-    );
-    return res ?? false;
-  }
+  const _HabitRow({
+    required this.uid,
+    required this.h,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     final habitId = (h['id'] ?? '').toString();
+    final title = (h['title'] ?? '').toString();
 
-    return Dismissible(
-      key: ValueKey("habit-$habitId"),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Alignment.centerRight,
-        decoration: BoxDecoration(
-          color: Colors.red.shade400,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (_) => _confirmDelete(context),
-      onDismissed: (_) async {
-        try {
-          await _deleteHabit(context, habitId);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Habit deleted")),
-          );
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Delete failed: $e")),
-          );
-        }
-      },
-      child: StreamBuilder<bool>(
-        stream: FirestoreService.instance.watchCompletedToday(uid, habitId),
-        builder: (context, snap) {
-          final done = snap.data ?? false;
+    return StreamBuilder<bool>(
+      stream: FirestoreService.instance.watchCompletedToday(uid, habitId),
+      builder: (context, snap) {
+        final done = snap.data ?? false;
 
-          return HabitCard(
-            title: (h['title'] ?? '').toString(),
+        return GestureDetector(
+          onLongPress: () => onDelete(habitId, title), // ✅ delete on long press
+          child: HabitCard(
+            title: title,
             subtitle: (h['frequency'] ?? 'daily').toString(),
             emoji: (h['emoji'] ?? '✨').toString(),
             color: (h['color'] is int) ? (h['color'] as int) : AppColors.primary.value,
@@ -1484,9 +1484,9 @@ class _HabitRow extends StatelessWidget {
             ),
             onToggle: () => FirestoreService.instance.toggleToday(uid, habitId),
             habit: null,
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1613,14 +1613,6 @@ class _Pill extends StatelessWidget {
   }
 }
 
-// ====================== Nutrition + Sleep Panels (UI-only) ======================
-// Your _NutritionPanel, _SleepPanel, _MealRow, _MiniActionCard, _MiniCounter, _SoftDivider
-// remain EXACTLY as you pasted them below. (No changes needed)
-
-
-// ====================== Nutrition + Sleep Panels (UI-only) ======================
-// ⚠️ Keep your existing _NutritionPanel, _SleepPanel, _MealRow, _MiniActionCard, _MiniCounter, _SoftDivider here.
-// (No changes needed)
 // ====================== Nutrition + Sleep Panels (UI-only) ======================
 
 class _NutritionPanel extends StatefulWidget {
