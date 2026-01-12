@@ -8,7 +8,7 @@ import '../../services/firestore_service.dart';
 import '../../utils/streak_utils.dart';
 import '../../models/habit_models.dart';
 import '../../features/habits/habit_detail_helpers/goal_card.dart';
-import '../../features/habits/habit_detail_helpers/helpers.dart';
+//import '../../features/habits/habit_detail_helpers/helpers.dart';
 import '../../features/habits/habit_detail_helpers/history_list.dart';
 import '../../features/habits/habit_detail_helpers/model.dart';
 import '../../features/habits/habit_detail_helpers/note_card.dart';

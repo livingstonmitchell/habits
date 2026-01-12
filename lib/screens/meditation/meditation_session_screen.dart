@@ -37,10 +37,10 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
 
   // ✅ IMPORTANT: these strings MUST exactly match your pubspec + file names on disk
   final List<String> _playlist = const [
-    'assets/audio/carry_me_kevin_downswell.mp3',
-    'assets/audio/casey_j_if_godnothing_but_the_blood.mp3',
-    'assets/audio/change_me.mp3',
-    'assets/audio/close_to_you.mp3',
+    'assets/audio/Bamboo_Flute.mp3',
+    'assets/audio/birds_chirping.mp3',
+    'assets/audio/ocean_waves.mp3',
+    'assets/audio/Short_Fireplace.mp3',
   ];
 
   final List<String> _quotes = const [
@@ -325,7 +325,7 @@ class _MeditationSessionScreenState extends State<MeditationSessionScreen> {
                                     const Spacer(),
                                     if (kIsWeb)
                                       Text(
-                                        "Web audio ✓",
+                                        "Calm Spirit audio ✓",
                                         style: AppText.muted.copyWith(fontSize: 12),
                                       ),
                                   ],

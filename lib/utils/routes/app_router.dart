@@ -3,7 +3,6 @@ import 'package:habits_app/features/onboarding_screen.dart';
 import 'package:habits_app/screens/habits/add_habits.dart';
 import 'package:habits_app/screens/habits/calender_screen.dart';
 import 'package:habits_app/screens/progress-screen.dart';
-import '../../auth/splash_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/register_screen.dart';
 import '../../auth/reset_password_screen.dart';

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:habits_app/routes/app_router.dart';
+import 'package:habits_app/utils/routes/app_router.dart';
 import 'package:habits_app/utils/theme.dart';
 import 'package:intl/intl.dart';
 

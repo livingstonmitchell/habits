@@ -17,12 +17,104 @@ class TodayHomeScreen extends StatefulWidget {
 }
 
 class _TodayHomeScreenState extends State<TodayHomeScreen> {
-  String _tab = "All"; // All / Habits / Nutrition / Sleep
+  // ✅ MAIN TAB (this controls what shows)
+  String _tab =
+      "All"; // All / Habits / Nutrition / Sleep / Just Because / For the foodie / House and home / Financials / Health and wellness / In the morning / The night before
   String _search = "";
 
   bool _showOnlyActive = true;
   String _freqFilter = "all"; // all / daily / weekly
   String _sort = "newest"; // newest / title
+
+  // ✅ Suggestions for the NEW tabs
+  static const Map<String, List<Map<String, String>>> _suggestionGroups = {
+    "Just Because": [
+      {"t": "Give someone a compliment", "e": "💬"},
+      {"t": "Smile at a stranger", "e": "😊"},
+      {"t": "Text an old friend", "e": "📩"},
+      {"t": "Outdoor activities", "e": "🌳"},
+      {"t": "On-time / Wasn’t late", "e": "⏰"},
+      {"t": "Learn something new", "e": "🧠"},
+      {"t": "Laughing out loud", "e": "😂"},
+      {"t": "Gratitude practice", "e": "🙏"},
+      {"t": "Journaling", "e": "📓"},
+      {"t": "Reading", "e": "📚"},
+      {"t": "No screen time", "e": "📵"},
+    ],
+    "For the foodie": [
+      {"t": "Try a new recipe", "e": "🍳"},
+      {"t": "Eat breakfast", "e": "🥣"},
+      {"t": "Meat-free eating", "e": "🥗"},
+      {"t": "Order in", "e": "🛵"},
+      {"t": "Cook at home", "e": "🏠"},
+      {"t": "No alcohol", "e": "🚫🍷"},
+      {"t": "Eat fruit", "e": "🍎"},
+      {"t": "Eat veggies", "e": "🥦"},
+      {"t": "Drink 8 glasses of water", "e": "💧"},
+      {"t": "No late-night snacking", "e": "🌙"},
+      {"t": "Meal planning", "e": "🗓️"},
+    ],
+    "House and home": [
+      {"t": "Sweep", "e": "🧹"},
+      {"t": "Mop", "e": "🧼"},
+      {"t": "Clear the sink", "e": "🚰"},
+      {"t": "Water plants", "e": "🪴"},
+      {"t": "Tidy up", "e": "🧺"},
+    ],
+    "Financials": [
+      {"t": "No spending", "e": "🚫💸"},
+      {"t": "Pay bills", "e": "🧾"},
+      {"t": "No credit card balance", "e": "💳"},
+      {"t": "Pay day", "e": "💰"},
+    ],
+    "Health and wellness": [
+      {"t": "Vitamins/meds", "e": "💊"},
+      {"t": "Mood", "e": "🙂"},
+      {"t": "Meditation", "e": "🧘"},
+      {"t": "Exercise", "e": "🏋️"},
+      {"t": "Daily steps", "e": "👟"},
+      {"t": "Affirmations", "e": "✨"},
+      {"t": "Slept 7-8 hours", "e": "😴"},
+    ],
+    "In the morning": [
+      {"t": "Caffeine-Free", "e": "☕🚫"},
+      {"t": "Coffee without sugar", "e": "☕"},
+      {"t": "Write a to-do list", "e": "✅"},
+      {"t": "Clear our inbox", "e": "📥"},
+      {"t": "Send a just because text to a friend", "e": "📩"},
+    ],
+    "The night before": [
+      {"t": "Pack lunch", "e": "🥪"},
+      {"t": "Layout clothes", "e": "👕"},
+      {"t": "Review tomorrow’s schedule", "e": "🗓️"},
+      {"t": "10-minute tidy up", "e": "🧺"},
+      {"t": "Give thanks", "e": "🙏"},
+      {"t": "Wind down an hour before bedtime", "e": "🌙"},
+    ],
+  };
+
+  static const Set<String> _suggestionTabs = {
+    "Just Because",
+    "For the foodie",
+    "House and home",
+    "Financials",
+    "Health and wellness",
+    "In the morning",
+    "The night before",
+  };
+
+  bool get _isSuggestionTab => _suggestionTabs.contains(_tab);
+
+  List<Map<String, String>> _suggestionItemsForMainTab() {
+    if (_tab == "All") {
+      // All = show all suggestion items too (optional)
+      return _suggestionGroups.entries
+          .expand((e) => e.value.map((it) => {"t": it["t"]!, "e": it["e"]!, "c": e.key}))
+          .toList();
+    }
+    final list = _suggestionGroups[_tab] ?? const [];
+    return list.map((it) => {"t": it["t"]!, "e": it["e"]!, "c": _tab}).toList();
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -223,7 +315,11 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         final name = (snap.data?['displayName'] ?? 'User').toString();
                         return InkWell(
                           borderRadius: BorderRadius.circular(999),
-                          onTap: () => Navigator.pushNamed(context, AppRoutes.userProfile, arguments: {'tab': 2}),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.userProfile,
+                            arguments: {'tab': 2},
+                          ),
                           child: _ProfileAvatar(name: name),
                         );
                       },
@@ -255,7 +351,7 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                               child: TextField(
                                 onChanged: (v) => setState(() => _search = v),
                                 decoration: const InputDecoration(
-                                  hintText: "Search habits, nutrition, sleep...",
+                                  hintText: "Search habits...",
                                   border: InputBorder.none,
                                 ),
                               ),
@@ -301,11 +397,49 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                 final rawHabits = snap.data ?? [];
                 final filtered = _applyFilters(rawHabits);
 
+                // ✅ If suggestion tab selected -> show ONLY those suggestion chips (no habits sections)
+                if (_isSuggestionTab) {
+                  final items = _suggestionItemsForMainTab();
+                  return SliverList(
+                    delegate: SliverChildListDelegate(
+                      [
+                        const SizedBox(height: 10),
+                        _SectionHeader(
+                          title: _tab,
+                          action: "Add",
+                          onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
+                        ),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _SuggestionsWrap(
+                            items: items,
+                            onPick: (title, category, emoji) {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.addHabit,
+                                arguments: {
+                                  "prefillTitle": title,
+                                  "prefillEmoji": emoji,
+                                  "prefillCategory": category,
+                                  "prefillHabitType": "completionOnly",
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 120),
+                      ],
+                    ),
+                  );
+                }
+
+                // ✅ Habits-only list
                 if (_tab == "Habits") {
                   return _HabitsListSliver(uid: uid, habits: filtered);
                 }
 
-                final showList = _tab == "All";
+                final showAll = _tab == "All";
                 final showNutrition = _tab == "Nutrition";
                 final showSleep = _tab == "Sleep";
 
@@ -321,363 +455,167 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                     [
                       const SizedBox(height: 8),
 
-                      // ======================= A) Start New Habits (MORE) =======================
-                      _SectionHeader(
-                        title: "Start New Habits",
-                        action: "Add",
-                        onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 150, // ✅
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
+                      // ✅ All tab: keep your existing content
+                      if (showAll) ...[
+                        _SectionHeader(
+                          title: "Start New Habits",
+                          action: "Add",
+                          onAction: () => Navigator.pushNamed(context, AppRoutes.addHabit),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 150,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            children: [
+                              _SuggestionCard(
+                                title: "Drink Water",
+                                subtitle: "Hydration 💧",
+                                emoji: "💧",
+                                category: "Nutrition",
+                                goalText: "8 glasses",
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.addHabit,
+                                  arguments: {
+                                    "prefillTitle": "Drink Water",
+                                    "prefillEmoji": "💧",
+                                    "prefillCategory": "Nutrition",
+                                    "prefillGoal": 8,
+                                    "prefillUnit": "glasses",
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _SuggestionCard(
+                                title: "Eat Fruit",
+                                subtitle: "Vitamins 🍎",
+                                emoji: "🍎",
+                                category: "Nutrition",
+                                goalText: "2 servings",
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.addHabit,
+                                  arguments: {
+                                    "prefillTitle": "Eat Fruit",
+                                    "prefillEmoji": "🍎",
+                                    "prefillCategory": "Nutrition",
+                                    "prefillGoal": 2,
+                                    "prefillUnit": "servings",
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _SuggestionCard(
+                                title: "Meditation",
+                                subtitle: "Calm 🧘",
+                                emoji: "🧘",
+                                category: "Mental health",
+                                goalText: "10 minutes",
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.addHabit,
+                                  arguments: {
+                                    "prefillTitle": "Meditation",
+                                    "prefillEmoji": "🧘",
+                                    "prefillCategory": "Mental health",
+                                    "prefillGoal": 10,
+                                    "prefillUnit": "minutes",
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ✅ (Optional) Show the suggestion categories quickly inside All too
+                        const SizedBox(height: 14),
+                        _SectionHeader(
+                          title: "Quick ideas",
+                          action: "See all",
+                          onAction: () => setState(() => _tab = "Just Because"),
+                        ),
+                        const SizedBox(height: 10),
+                        Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            // Nutrition
-                            _SuggestionCard(
-                              title: "Drink Water",
-                              subtitle: "Hydration 💧",
-                              emoji: "💧",
-                              category: "Nutrition",
-                              goalText: "8 glasses",
-                              onTap: () => Navigator.pushNamed(
+                          child: _SuggestionsWrap(
+                            items: _suggestionItemsForMainTab(),
+                            onPick: (title, category, emoji) {
+                              Navigator.pushNamed(
                                 context,
                                 AppRoutes.addHabit,
                                 arguments: {
-                                  "prefillTitle": "Drink Water",
-                                  "prefillEmoji": "💧",
-                                  "prefillCategory": "Nutrition",
-                                  "prefillGoal": 8,
-                                  "prefillUnit": "glasses",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Eat Fruit",
-                              subtitle: "Vitamins 🍎",
-                              emoji: "🍎",
-                              category: "Nutrition",
-                              goalText: "2 servings",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Eat Fruit",
-                                  "prefillEmoji": "🍎",
-                                  "prefillCategory": "Nutrition",
-                                  "prefillGoal": 2,
-                                  "prefillUnit": "servings",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Eat Veggies",
-                              subtitle: "Healthy 🥦",
-                              emoji: "🥦",
-                              category: "Nutrition",
-                              goalText: "2 servings",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Eat Veggies",
-                                  "prefillEmoji": "🥦",
-                                  "prefillCategory": "Nutrition",
-                                  "prefillGoal": 2,
-                                  "prefillUnit": "servings",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Protein Meal",
-                              subtitle: "Strength 🥩",
-                              emoji: "🥩",
-                              category: "Nutrition",
-                              goalText: "1 time",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Protein Meal",
-                                  "prefillEmoji": "🥩",
-                                  "prefillCategory": "Nutrition",
-                                  "prefillGoal": 1,
-                                  "prefillUnit": "time",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "No Soda",
-                              subtitle: "Better choice 🚫🥤",
-                              emoji: "🚫🥤",
-                              category: "Nutrition",
-                              goalText: "Daily",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "No Soda",
-                                  "prefillEmoji": "🚫🥤",
-                                  "prefillCategory": "Nutrition",
+                                  "prefillTitle": title,
+                                  "prefillEmoji": emoji,
+                                  "prefillCategory": category,
                                   "prefillHabitType": "completionOnly",
                                 },
-                              ),
-                            ),
-
-                            const SizedBox(width: 16),
-
-                            // Fitness
-                            _SuggestionCard(
-                              title: "Morning Walk",
-                              subtitle: "Steps 🏃",
-                              emoji: "🏃",
-                              category: "Fitness",
-                              goalText: "5000 steps",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Morning Walk",
-                                  "prefillEmoji": "🏃",
-                                  "prefillCategory": "Fitness",
-                                  "prefillGoal": 5000,
-                                  "prefillUnit": "steps",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Running",
-                              subtitle: "Cardio 🏃‍♂️",
-                              emoji: "🏃‍♂️",
-                              category: "Fitness",
-                              goalText: "20 minutes",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Running",
-                                  "prefillEmoji": "🏃‍♂️",
-                                  "prefillCategory": "Fitness",
-                                  "prefillGoal": 20,
-                                  "prefillUnit": "minutes",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Workout",
-                              subtitle: "Gym 🏋️",
-                              emoji: "🏋️",
-                              category: "Fitness",
-                              goalText: "30 minutes",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Workout",
-                                  "prefillEmoji": "🏋️",
-                                  "prefillCategory": "Fitness",
-                                  "prefillGoal": 30,
-                                  "prefillUnit": "minutes",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Stretching",
-                              subtitle: "Mobility 🤸",
-                              emoji: "🤸",
-                              category: "Fitness",
-                              goalText: "10 minutes",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Stretching",
-                                  "prefillEmoji": "🤸",
-                                  "prefillCategory": "Fitness",
-                                  "prefillGoal": 10,
-                                  "prefillUnit": "minutes",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Jump Rope",
-                              subtitle: "Quick cardio 🪢",
-                              emoji: "🪢",
-                              category: "Fitness",
-                              goalText: "10 minutes",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Jump Rope",
-                                  "prefillEmoji": "🪢",
-                                  "prefillCategory": "Fitness",
-                                  "prefillGoal": 10,
-                                  "prefillUnit": "minutes",
-                                },
-                              ),
-                            ),
-
-                            const SizedBox(width: 16),
-
-                            // Mental + Sleep + Productivity (nice extras)
-                            _SuggestionCard(
-                              title: "Meditation",
-                              subtitle: "Calm 🧘",
-                              emoji: "🧘",
-                              category: "Mental health",
-                              goalText: "10 minutes",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Meditation",
-                                  "prefillEmoji": "🧘",
-                                  "prefillCategory": "Mental health",
-                                  "prefillGoal": 10,
-                                  "prefillUnit": "minutes",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Sleep Early",
-                              subtitle: "Recovery 😴",
-                              emoji: "😴",
-                              category: "Sleep",
-                              goalText: "8 hours",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Sleep Early",
-                                  "prefillEmoji": "😴",
-                                  "prefillCategory": "Sleep",
-                                  "prefillGoal": 8,
-                                  "prefillUnit": "hours",
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _SuggestionCard(
-                              title: "Read",
-                              subtitle: "Focus 📚",
-                              emoji: "📚",
-                              category: "Productivity",
-                              goalText: "10 minutes",
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.addHabit,
-                                arguments: {
-                                  "prefillTitle": "Read",
-                                  "prefillEmoji": "📚",
-                                  "prefillCategory": "Productivity",
-                                  "prefillGoal": 10,
-                                  "prefillUnit": "minutes",
-                                },
-                              ),
-                            ),
-                          ],
+                              );
+                            },
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 18),
 
-                      // ======================= B) Health widgets (UI only) =======================
-                      _SectionHeader(title: "Health widgets", action: "Customize", onAction: () {}),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: const [
-                            Expanded(child: _HealthWidgetCard(title: "Heart rate", value: "100 / 60", icon: Icons.favorite_border)),
-                            SizedBox(width: 12),
-                            Expanded(child: _HealthWidgetCard(title: "Blood sugar", value: "100 / 70", icon: Icons.opacity_outlined)),
-                          ],
+                        _SectionHeader(title: "Health widgets", action: "Customize", onAction: () {}),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: const [
+                              Expanded(child: _HealthWidgetCard(title: "Heart rate", value: "100 / 60", icon: Icons.favorite_border)),
+                              SizedBox(width: 12),
+                              Expanded(child: _HealthWidgetCard(title: "Blood sugar", value: "100 / 70", icon: Icons.opacity_outlined)),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: const [
-                            Expanded(child: _HealthWidgetCard(title: "Water", value: "2 / 8", icon: Icons.water_drop_outlined)),
-                            SizedBox(width: 12),
-                            Expanded(child: _HealthWidgetCard(title: "Sleep", value: "6h 20m", icon: Icons.bedtime_outlined)),
-                          ],
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: const [
+                              Expanded(child: _HealthWidgetCard(title: "Water", value: "2 / 8", icon: Icons.water_drop_outlined)),
+                              SizedBox(width: 12),
+                              Expanded(child: _HealthWidgetCard(title: "Sleep", value: "6h 20m", icon: Icons.bedtime_outlined)),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                      // ======================= Categories =======================
-                      if (_tab == "All") ...[
                         _CategoryStrip(title: "Fitness", items: fitness, uid: uid),
                         _CategoryStrip(title: "Lifestyle", items: lifestyle, uid: uid),
                         _CategoryStrip(title: "Productivity", items: productivity, uid: uid),
                         _CategoryStrip(title: "Mental health", items: mental, uid: uid),
                         _CategoryStrip(title: "Nutrition", items: nutrition, uid: uid),
                         _CategoryStrip(title: "Sleep", items: sleep, uid: uid),
-                      ],
 
-                      if (showNutrition) ...[
-                        const SizedBox(height: 6),
-                        _NutritionPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
-                        const SizedBox(height: 14),
-                        _CategoryStrip(title: "Nutrition habits", items: nutrition, uid: uid),
-                        _CategoryStrip(title: "Lifestyle habits", items: lifestyle, uid: uid),
-                        _CategoryStrip(title: "Fitness", items: fitness, uid: uid),
-                      ],
+                        const SizedBox(height: 16),
 
-                      if (showSleep) ...[
-                        const SizedBox(height: 6),
-                        _SleepPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
-                        const SizedBox(height: 14),
-                        _CategoryStrip(title: "Sleep habits", items: sleep, uid: uid),
-                        _CategoryStrip(title: "Mental health", items: mental, uid: uid),
-                        _CategoryStrip(title: "Lifestyle", items: lifestyle, uid: uid),
-                      ],
-
-                      const SizedBox(height: 16),
-
-                      // ======================= C) Recent activity =======================
-                      _SectionHeader(
-                        title: "Recent activity",
-                        action: "Calendar",
-                        onAction: () => Navigator.pushNamed(context, AppRoutes.calendar),
-                      ),
-                      const SizedBox(height: 10),
-                      _RecentActivity(uid: uid, habits: filtered),
-
-                      const SizedBox(height: 16),
-
-                      // ======================= Mini week =======================
-                      _SectionHeader(
-                        title: "This week",
-                        action: "Open calendar",
-                        onAction: () => Navigator.pushNamed(context, AppRoutes.calendar),
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _MiniWeekRow(
-                          onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
+                        _SectionHeader(
+                          title: "Recent activity",
+                          action: "Calendar",
+                          onAction: () => Navigator.pushNamed(context, AppRoutes.calendar),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        _RecentActivity(uid: uid, habits: filtered),
 
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                      // ======================= D) Habits list on All =======================
-                      if (showList) ...[
+                        _SectionHeader(
+                          title: "This week",
+                          action: "Open calendar",
+                          onAction: () => Navigator.pushNamed(context, AppRoutes.calendar),
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _MiniWeekRow(onTap: () => Navigator.pushNamed(context, AppRoutes.calendar)),
+                        ),
+
+                        const SizedBox(height: 16),
+
                         _SectionHeader(
                           title: "Today's Tasks",
                           action: "Add",
@@ -685,9 +623,27 @@ class _TodayHomeScreenState extends State<TodayHomeScreen> {
                         ),
                         const SizedBox(height: 8),
                         _HabitsInlineList(uid: uid, habits: filtered),
+
+                        const SizedBox(height: 120),
                       ],
 
-                      const SizedBox(height: 120),
+                      // ✅ Nutrition tab = only nutrition panel + nutrition habits
+                      if (showNutrition) ...[
+                        const SizedBox(height: 6),
+                        _NutritionPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
+                        const SizedBox(height: 14),
+                        _CategoryStrip(title: "Nutrition habits", items: nutrition, uid: uid),
+                        const SizedBox(height: 120),
+                      ],
+
+                      // ✅ Sleep tab = only sleep panel + sleep habits
+                      if (showSleep) ...[
+                        const SizedBox(height: 6),
+                        _SleepPanel(onOpenHabits: () => setState(() => _tab = "Habits")),
+                        const SizedBox(height: 14),
+                        _CategoryStrip(title: "Sleep habits", items: sleep, uid: uid),
+                        const SizedBox(height: 120),
+                      ],
                     ],
                   ),
                 );
@@ -709,7 +665,20 @@ class _TabPills extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = const ["All", "Habits", "Nutrition", "Sleep"];
+    final tabs = const [
+      "All",
+      "Habits",
+      "Nutrition",
+      "Sleep",
+      "Just Because",
+      "For the foodie",
+      "House and home",
+      "Financials",
+      "Health and wellness",
+      "In the morning",
+      "The night before",
+    ];
+
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -719,6 +688,7 @@ class _TabPills extends StatelessWidget {
         itemBuilder: (context, i) {
           final t = tabs[i];
           final selected = t == value;
+
           return InkWell(
             borderRadius: BorderRadius.circular(999),
             onTap: () => onChanged(t),
@@ -883,37 +853,21 @@ class _SuggestionCard extends StatelessWidget {
               child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
             ),
             const SizedBox(width: 12),
-
-            // ✅ Make the text area flexible so it never overflows
             Expanded(
               child: Column(
-                mainAxisSize: MainAxisSize.min, // ✅ prevents vertical overflow
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.muted,
-                  ),
-
+                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.muted),
                   const SizedBox(height: 8),
-
-                  // ✅ Wrap chips but keep them small
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
                     children: [
                       _MiniChip(text: category),
-                      if (goalText != null && goalText!.trim().isNotEmpty)
-                        _MiniChip(text: goalText!, icon: Icons.flag_outlined),
+                      if (goalText != null && goalText!.trim().isNotEmpty) _MiniChip(text: goalText!, icon: Icons.flag_outlined),
                     ],
                   ),
                 ],
@@ -925,7 +879,6 @@ class _SuggestionCard extends StatelessWidget {
     );
   }
 }
-
 
 class _MiniChip extends StatelessWidget {
   final String text;
@@ -998,7 +951,68 @@ class _HealthWidgetCard extends StatelessWidget {
   }
 }
 
-// ---------- Horizontal category strips (OVERFLOW FIXED) ----------
+// ✅ NEW: Suggestions Wrap widget (used by the main _tab)
+class _SuggestionsWrap extends StatelessWidget {
+  final List<Map<String, String>> items;
+  final void Function(String title, String category, String emoji) onPick;
+
+  const _SuggestionsWrap({required this.items, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Text("No suggestions in this tab.", style: AppText.muted),
+      );
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: items.map((it) {
+        final title = it["t"]!;
+        final emoji = it["e"]!;
+        final category = it["c"]!;
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => onPick(title, category, emoji),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 240),
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ---------- Horizontal category strips ----------
 class _CategoryStrip extends StatelessWidget {
   final String title;
   final List<Map<String, dynamic>> items;
@@ -1020,11 +1034,7 @@ class _CategoryStrip extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => CategoryHabitsScreen(
-                  uid: uid,
-                  title: title,
-                  habits: items,
-                ),
+                builder: (_) => CategoryHabitsScreen(uid: uid, title: title, habits: items),
               ),
             );
           },
@@ -1045,7 +1055,6 @@ class _CategoryStrip extends StatelessWidget {
     );
   }
 }
-
 
 class _CategoryHabitCard extends StatelessWidget {
   final String uid;
@@ -1165,14 +1174,12 @@ class _RecentActivity extends StatelessWidget {
       final date = (data['date'] ?? '').toString();
       if (date.isEmpty) continue;
 
-      out.add(
-        _ActivityItem(
-          habitId: habitId,
-          title: (h['title'] ?? 'Habit').toString(),
-          emoji: (h['emoji'] ?? '✨').toString(),
-          dateKey: date,
-        ),
-      );
+      out.add(_ActivityItem(
+        habitId: habitId,
+        title: (h['title'] ?? 'Habit').toString(),
+        emoji: (h['emoji'] ?? '✨').toString(),
+        dateKey: date,
+      ));
     }
 
     out.sort((a, b) => b.dateKey.compareTo(a.dateKey));
@@ -1517,6 +1524,9 @@ class _Pill extends StatelessWidget {
 }
 
 // ====================== Nutrition + Sleep Panels (UI-only) ======================
+// ⚠️ Keep your existing _NutritionPanel, _SleepPanel, _MealRow, _MiniActionCard, _MiniCounter, _SoftDivider here.
+// (No changes needed)
+// ====================== Nutrition + Sleep Panels (UI-only) ======================
 
 class _NutritionPanel extends StatefulWidget {
   final VoidCallback onOpenHabits;
@@ -1559,7 +1569,10 @@ class _NutritionPanelState extends State<_NutritionPanel> {
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(color: AppColors.stroke),
                       ),
-                      child: Text("$pct%", style: const TextStyle(fontWeight: FontWeight.w900)),
+                      child: Text(
+                        "$pct%",
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ],
                 ),
@@ -1586,7 +1599,12 @@ class _NutritionPanelState extends State<_NutritionPanel> {
                   children: [
                     const Icon(Icons.water_drop_outlined, color: AppColors.primary),
                     const SizedBox(width: 8),
-                    Expanded(child: Text("Water", style: AppText.body.copyWith(fontWeight: FontWeight.w900))),
+                    Expanded(
+                      child: Text(
+                        "Water",
+                        style: AppText.body.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
                     _MiniCounter(
                       valueText: "$_waterCups / 8",
                       onMinus: () => setState(() => _waterCups = (_waterCups - 1).clamp(0, 8)),
@@ -1696,7 +1714,10 @@ class _SleepPanelState extends State<_SleepPanel> {
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(color: AppColors.stroke),
                       ),
-                      child: Text("$scorePct%", style: const TextStyle(fontWeight: FontWeight.w900)),
+                      child: Text(
+                        "$scorePct%",
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ],
                 ),
@@ -1716,7 +1737,10 @@ class _SleepPanelState extends State<_SleepPanel> {
                             valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                           ),
                         ),
-                        Text("$scorePct", style: const TextStyle(fontWeight: FontWeight.w900)),
+                        Text(
+                          "$scorePct",
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
                       ],
                     ),
                     const SizedBox(width: 14),
@@ -1786,7 +1810,12 @@ class _SleepPanelState extends State<_SleepPanel> {
                   children: [
                     const Icon(Icons.bedtime_outlined, color: AppColors.primary),
                     const SizedBox(width: 8),
-                    Expanded(child: Text("Bedtime", style: AppText.body.copyWith(fontWeight: FontWeight.w900))),
+                    Expanded(
+                      child: Text(
+                        "Bedtime",
+                        style: AppText.body.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
                     TextButton(onPressed: _pickBedtime, child: Text(_bedTime.format(context))),
                   ],
                 ),
@@ -1913,7 +1942,12 @@ class _MiniActionCard extends StatelessWidget {
                 children: [
                   Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: AppText.muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    subtitle,
+                    style: AppText.muted,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
