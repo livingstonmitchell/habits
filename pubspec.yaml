@@ -15,6 +15,7 @@ dependencies:
   cloud_firestore: ^5.4.3
   firebase_storage: ^12.3.2
   lottie: ^2.4.0
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +28,4 @@ flutter:
     - assets/lottie/welcome.json
     - assets/lottie/secure.json
     - assets/lottie/get_started.json
+    - assets/audio/
