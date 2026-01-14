@@ -4,9 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:habits_app/models/habit_models.dart';
 import 'package:habits_app/screens/habits/category_habits_screen.dart';
+import 'package:habits_app/screens/nutrition/manage_nutrition_screen.dart';
+import 'package:habits_app/screens/nutrition/nutrition_action_screen.dart';
+import 'package:habits_app/screens/nutrition/nutrition_meal_screen.dart';
+import 'package:habits_app/screens/nutrition/water_tracker_screen.dart';
 import 'package:habits_app/services/auth_service.dart';
 import 'package:habits_app/services/firestore_service.dart';
 import 'package:habits_app/utils/routes/app_router.dart';
+import 'package:habits_app/utils/streak_utils.dart';
 import 'package:habits_app/utils/theme.dart';
 import 'package:habits_app/utils/widgets/habitcard.dart';
 import 'package:intl/intl.dart';
@@ -1616,6 +1621,8 @@ class _Pill extends StatelessWidget {
 // ====================== Nutrition + Sleep Panels (UI-only) ======================
 
 class _NutritionPanel extends StatefulWidget {
+  /// You can still keep this if you want (for tab switching elsewhere),
+  /// but we will NOT use it for the button anymore.
   final VoidCallback onOpenHabits;
   const _NutritionPanel({required this.onOpenHabits});
 
@@ -1624,135 +1631,394 @@ class _NutritionPanel extends StatefulWidget {
 }
 
 class _NutritionPanelState extends State<_NutritionPanel> {
-  double _intake = 0.55; // UI-only
-  int _waterCups = 2;
+  String? get _uid => AuthService.instance.currentUser?.uid;
+
+  // You can later store this in profile/settings
+  final int _dailyCalorieGoal = 2500;
+
+  int _asInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? 0;
+  }
+
+  Future<void> _openAddFoodDialog(String uid, String dayKey) async {
+    final nameCtrl = TextEditingController();
+    final calCtrl = TextEditingController();
+    final carbsCtrl = TextEditingController();
+    final proteinCtrl = TextEditingController();
+    final fatCtrl = TextEditingController();
+
+    String meal = "Any";
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setD) {
+            return AlertDialog(
+              title: const Text("Add food"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Food name (ex: Chicken)",
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: calCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: "Calories (kcal)"),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: carbsCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: "Carbs (g)"),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: proteinCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: "Protein (g)"),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: fatCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: "Fat (g)"),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: meal,
+                      items: const [
+                        DropdownMenuItem(value: "Any", child: Text("Any")),
+                        DropdownMenuItem(value: "Breakfast", child: Text("Breakfast")),
+                        DropdownMenuItem(value: "Lunch", child: Text("Lunch")),
+                        DropdownMenuItem(value: "Dinner", child: Text("Dinner")),
+                        DropdownMenuItem(value: "Snack", child: Text("Snack")),
+                      ],
+                      onChanged: (v) => setD(() => meal = v ?? "Any"),
+                      decoration: const InputDecoration(labelText: "Meal"),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text("Cancel"),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    final calories = int.tryParse(calCtrl.text.trim()) ?? 0;
+
+                    if (name.isEmpty || calories <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Enter a valid food name and calories.")),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text("Add"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (saved != true) {
+      nameCtrl.dispose();
+      calCtrl.dispose();
+      carbsCtrl.dispose();
+      proteinCtrl.dispose();
+      fatCtrl.dispose();
+      return;
+    }
+
+    await FirestoreService.instance.addFoodForDay(
+      uid: uid,
+      dayKey: dayKey,
+      name: nameCtrl.text.trim(),
+      calories: int.tryParse(calCtrl.text.trim()) ?? 0,
+      carbs: int.tryParse(carbsCtrl.text.trim()) ?? 0,
+      protein: int.tryParse(proteinCtrl.text.trim()) ?? 0,
+      fat: int.tryParse(fatCtrl.text.trim()) ?? 0,
+      meal: meal,
+    );
+
+    nameCtrl.dispose();
+    calCtrl.dispose();
+    carbsCtrl.dispose();
+    proteinCtrl.dispose();
+    fatCtrl.dispose();
+  }
+
+  Future<bool> _confirmDelete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete food?"),
+        content: const Text("This will remove it from today's intake."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete")),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  void _openManageNutrition() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ManageNutritionScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final pct = (_intake * 100).round();
+    final uid = _uid;
+    if (uid == null) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.stroke),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text("Daily intake", style: AppText.h2.copyWith(fontSize: 18)),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.stroke),
-                      ),
-                      child: Text(
-                        "$pct%",
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: _intake,
-                    minHeight: 12,
-                    backgroundColor: AppColors.bg,
-                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const _MealRow(title: "Breakfast", subtitle: "Eggs + fruit • 420 kcal"),
-                const SizedBox(height: 8),
-                const _MealRow(title: "Lunch", subtitle: "Chicken + rice • 610 kcal"),
-                const SizedBox(height: 8),
-                const _MealRow(title: "Dinner", subtitle: "Salad + fish • 520 kcal"),
-                const SizedBox(height: 12),
-                const _SoftDivider(),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.water_drop_outlined, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Water",
-                        style: AppText.body.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                    ),
-                    _MiniCounter(
-                      valueText: "$_waterCups / 8",
-                      onMinus: () => setState(() => _waterCups = (_waterCups - 1).clamp(0, 8)),
-                      onPlus: () => setState(() => _waterCups = (_waterCups + 1).clamp(0, 8)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: (_waterCups / 8).clamp(0.0, 1.0),
-                    minHeight: 10,
-                    backgroundColor: AppColors.bg,
-                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text("Adjust goal preview", style: AppText.muted),
-                Slider(
-                  value: _intake,
-                  onChanged: (v) => setState(() => _intake = v),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
+    final dayKey = dateKey(dateOnly(DateTime.now()));
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: FirestoreService.instance.watchFoodsForDay(uid, dayKey),
+      builder: (context, snap) {
+        final foods = snap.data ?? [];
+
+        final totalCalories = foods.fold<int>(0, (sum, f) => sum + _asInt(f['calories']));
+        final totalCarbs = foods.fold<int>(0, (sum, f) => sum + _asInt(f['carbs']));
+        final totalProtein = foods.fold<int>(0, (sum, f) => sum + _asInt(f['protein']));
+        final totalFat = foods.fold<int>(0, (sum, f) => sum + _asInt(f['fat']));
+
+        final intake = (totalCalories / _dailyCalorieGoal).clamp(0.0, 1.0);
+        final pct = (intake * 100).round();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
             children: [
-              Expanded(
-                child: _MiniActionCard(
-                  title: "Eat protein",
-                  subtitle: "After workout",
-                  icon: Icons.restaurant_menu,
-                  onTap: () {},
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.stroke),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text("Daily intake", style: AppText.h2.copyWith(fontSize: 18)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppColors.stroke),
+                          ),
+                          child: Text(
+                            "$pct%",
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "$totalCalories / $_dailyCalorieGoal kcal",
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: intake,
+                        minHeight: 12,
+                        backgroundColor: AppColors.bg,
+                        valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        _macroChip("Carbs", "$totalCarbs g"),
+                        const SizedBox(width: 8),
+                        _macroChip("Protein", "$totalProtein g"),
+                        const SizedBox(width: 8),
+                        _macroChip("Fat", "$totalFat g"),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    if (foods.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.stroke),
+                        ),
+                        child: Text("No foods logged today yet.", style: AppText.muted),
+                      )
+                    else
+                      Column(
+                        children: foods.take(4).map((f) {
+                          final id = (f['id'] ?? '').toString();
+                          final name = (f['name'] ?? 'Food').toString();
+                          final kcal = _asInt(f['calories']);
+                          final meal = (f['meal'] ?? 'Any').toString();
+
+                          return Dismissible(
+                            key: ValueKey(id),
+                            direction: DismissDirection.endToStart,
+                            confirmDismiss: (_) => _confirmDelete(),
+                            background: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              alignment: Alignment.centerRight,
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(Icons.delete_outline, color: Colors.red),
+                            ),
+                            onDismissed: (_) {
+                              FirestoreService.instance.deleteFoodForDay(
+                                uid: uid,
+                                dayKey: dayKey,
+                                foodId: id,
+                              );
+                            },
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                // Optional: open a "Food details" page later
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.bg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.stroke),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.restaurant_menu, size: 18),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: const TextStyle(fontWeight: FontWeight.w900),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(meal, style: AppText.muted),
+                                        ],
+                                      ),
+                                    ),
+                                    Text("$kcal kcal", style: AppText.muted),
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.chevron_right),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _openAddFoodDialog(uid, dayKey),
+                        icon: const Icon(Icons.add),
+                        label: const Text("Add food"),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MiniActionCard(
-                  title: "Fruit snack",
-                  subtitle: "Daily vitamins",
-                  icon: Icons.local_grocery_store_outlined,
-                  onTap: () {},
+
+              const SizedBox(height: 12),
+
+              // ✅ FIXED: This now opens ManageNutritionScreen
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _openManageNutrition,
+                  child: const Text("Manage nutrition habits"),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: widget.onOpenHabits,
-              child: const Text("Manage nutrition habits"),
-            ),
-          ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _macroChip(String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: AppText.muted),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+          ],
+        ),
       ),
     );
   }
 }
+
+
+
 
 class _SleepPanel extends StatefulWidget {
   final VoidCallback onOpenHabits;
@@ -1954,37 +2220,49 @@ class _SleepPanelState extends State<_SleepPanel> {
 class _MealRow extends StatelessWidget {
   final String title;
   final String subtitle;
-  const _MealRow({required this.title, required this.subtitle});
+  final VoidCallback? onTap;
+
+  const _MealRow({
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.stroke),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_outline, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-                const SizedBox(height: 3),
-                Text(subtitle, style: AppText.muted),
-              ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: AppText.muted),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right),
-        ],
+            const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
     );
   }
 }
+
+
 
 class _MiniActionCard extends StatelessWidget {
   final String title;

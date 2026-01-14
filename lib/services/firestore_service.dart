@@ -27,7 +27,6 @@ class FirestoreService {
     String? email,
     String? photoUrl,
   }) {
-    // If model is provided, use it.
     if (profile != null) {
       return _db
           .collection('users')
@@ -35,7 +34,6 @@ class FirestoreService {
           .set(profile.toMap(), SetOptions(merge: true));
     }
 
-    // Otherwise use named params.
     if (uid == null || displayName == null || email == null) {
       throw ArgumentError(
         'Provide either a UserProfile OR uid, displayName, and email.',
@@ -51,14 +49,12 @@ class FirestoreService {
     }, SetOptions(merge: true));
   }
 
-  /// Typed profile watcher
   Stream<UserProfile?> watchTypedProfile(String uid) {
     return userDoc(uid)
         .snapshots()
         .map((d) => d.exists ? UserProfile.fromDoc(d) : null);
   }
 
-  /// Raw map profile watcher (handy for quick UI binding)
   Stream<Map<String, dynamic>?> watchProfile(String uid) {
     return userDoc(uid).snapshots().map((d) => d.data());
   }
@@ -71,11 +67,11 @@ class FirestoreService {
   // HABITS
   // =========================
 
-  /// New structure (recommended): users/{uid}/habits/{habitId}
+  /// New structure: users/{uid}/habits/{habitId}
   CollectionReference<Map<String, dynamic>> habitsCol(String uid) =>
       userDoc(uid).collection('habits');
 
-  /// Old structure support: /habits where userId == uid
+  /// Old flat structure support: /habits where userId == uid
   Stream<List<Habit>> watchHabitsFlat(String uid) {
     return _db
         .collection('habits')
@@ -85,7 +81,6 @@ class FirestoreService {
         .map((s) => s.docs.map((d) => Habit.fromDoc(d)).toList());
   }
 
-  /// New structure watcher (returns map with id)
   Stream<List<Map<String, dynamic>>> watchHabits(String uid) {
     return habitsCol(uid)
         .orderBy('createdAt', descending: true)
@@ -100,7 +95,6 @@ class FirestoreService {
     });
   }
 
-  /// Add habit (new structure)
   Future<String> addHabit(String uid, Map<String, dynamic> habit) async {
     final ref = await habitsCol(uid).add({
       ...habit,
@@ -109,13 +103,16 @@ class FirestoreService {
     return ref.id;
   }
 
-  /// Add habit (old flat structure) using Habit model
   Future<String> addHabitFlat(Habit habit) async {
     final ref = await _db.collection('habits').add(habit.toMap());
     return ref.id;
   }
 
-  Future<void> updateHabit(String uid, String habitId, Map<String, dynamic> patch) {
+  Future<void> updateHabit(
+    String uid,
+    String habitId,
+    Map<String, dynamic> patch,
+  ) {
     return habitsCol(uid).doc(habitId).update(patch);
   }
 
@@ -123,17 +120,14 @@ class FirestoreService {
   Future<void> deleteHabit(String uid, String habitId) async {
     final habitRef = habitsCol(uid).doc(habitId);
 
-    // delete logs subcollection
     final logsSnap = await habitRef.collection('logs').get();
     for (final d in logsSnap.docs) {
       await d.reference.delete();
     }
 
-    // delete habit doc
     await habitRef.delete();
   }
 
-  /// Old flat structure delete
   Future<void> deleteHabitFlat(String habitId) {
     return _db.collection('habits').doc(habitId).delete();
   }
@@ -142,7 +136,7 @@ class FirestoreService {
   // LOGS
   // =========================
 
-  /// New structure: users/{uid}/habits/{habitId}/logs/{logId}
+  /// users/{uid}/habits/{habitId}/logs/{logId}
   CollectionReference<Map<String, dynamic>> logsCol(String uid, String habitId) =>
       habitsCol(uid).doc(habitId).collection('logs');
 
@@ -150,7 +144,6 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> flatLogsCol() =>
       _db.collection('habit_logs');
 
-  // 1. Method to watch logs for a specific habit
   Stream<List<HabitLog>> watchHabitLogs(String uid, String habitId) {
     return _db
         .collection('users')
@@ -159,13 +152,12 @@ class FirestoreService {
         .doc(habitId)
         .collection('logs')
         .orderBy('date', descending: true)
-        .limit(60) // Show last 2 months
+        .limit(60)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => HabitLog.fromSnapshot(doc)).toList());
   }
 
-  // 2. Method to update or create a log entry
   Future<void> updateHabitLog(
     String uid,
     String habitId,
@@ -182,23 +174,27 @@ class FirestoreService {
         .set(data, SetOptions(merge: true));
   }
 
-  // ---- Watch today log / completed (new structure)
   Stream<Map<String, dynamic>?> watchTodayLog(String uid, String habitId) {
     final today = DateUtilsX.dateKey(DateTime.now());
     return logsCol(uid, habitId)
         .where('date', isEqualTo: today)
         .limit(1)
         .snapshots()
-        .map((s) => s.docs.isEmpty ? null : {'id': s.docs.first.id, ...s.docs.first.data()});
+        .map((s) =>
+            s.docs.isEmpty ? null : {'id': s.docs.first.id, ...s.docs.first.data()});
   }
 
   Stream<bool> watchCompletedToday(String uid, String habitId) {
-    return watchTodayLog(uid, habitId).map((log) => (log?['isCompleted'] == true));
+    return watchTodayLog(uid, habitId)
+        .map((log) => (log?['isCompleted'] == true));
   }
 
   Future<void> toggleToday(String uid, String habitId) async {
     final todayKey = DateUtilsX.dateKey(DateTime.now());
-    final q = await logsCol(uid, habitId).where('date', isEqualTo: todayKey).limit(1).get();
+    final q = await logsCol(uid, habitId)
+        .where('date', isEqualTo: todayKey)
+        .limit(1)
+        .get();
 
     if (q.docs.isEmpty) {
       await logsCol(uid, habitId).add({
@@ -216,7 +212,10 @@ class FirestoreService {
 
   Future<void> upsertTodayNote(String uid, String habitId, String note) async {
     final todayKey = DateUtilsX.dateKey(DateTime.now());
-    final q = await logsCol(uid, habitId).where('date', isEqualTo: todayKey).limit(1).get();
+    final q = await logsCol(uid, habitId)
+        .where('date', isEqualTo: todayKey)
+        .limit(1)
+        .get();
 
     if (q.docs.isEmpty) {
       await logsCol(uid, habitId).add({
@@ -245,8 +244,6 @@ class FirestoreService {
         .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
   }
 
-  // ---- Old flat structure watchers / toggle (kept for compatibility)
-
   Stream<bool> watchCheckedTodayFlat(String uid, String habitId, DateTime date) {
     final key = DateUtilsX.dateKey(date);
     return flatLogsCol()
@@ -259,7 +256,6 @@ class FirestoreService {
             s.docs.isNotEmpty && ((s.docs.first.data()['checked'] ?? false) as bool));
   }
 
-  /// This version matches your FIRST code (habit_logs with dateKey/checked)
   Future<void> toggleCheckInFlat({
     required String uid,
     required String habitId,
@@ -296,7 +292,6 @@ class FirestoreService {
     });
   }
 
-  /// This version matches your SECOND/THIRD code (subcollection logs with date/isCompleted)
   Future<void> toggleCheckIn({
     required String uid,
     required String habitId,
@@ -324,7 +319,6 @@ class FirestoreService {
   // PROGRESS / STATS
   // =========================
 
-  /// Old flat summary (from first code)
   Future<Map<String, int>> progressSummaryFlat({
     required String uid,
     required DateTime from,
@@ -345,7 +339,6 @@ class FirestoreService {
     return {'checked': checkedCount, 'totalLogs': q.docs.length};
   }
 
-  /// New structure weekly summary
   Future<Map<String, int>> weeklySummary(String uid, {int days = 7}) async {
     final end = DateTime.now();
     final start = end.subtract(Duration(days: days - 1));
@@ -419,5 +412,65 @@ class FirestoreService {
     }
 
     return completed / possible;
+  }
+
+  // =========================
+  // NUTRITION (Foods) ✅ SINGLE SOURCE OF TRUTH
+  // users/{uid}/nutrition_logs/{dayKey}/foods/{foodId}
+  // =========================
+
+  CollectionReference<Map<String, dynamic>> nutritionFoodsCol(String uid, String dayKey) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .collection('nutrition_logs')
+        .doc(dayKey)
+        .collection('foods');
+  }
+
+  Stream<List<Map<String, dynamic>>> watchFoodsForDay(String uid, String dayKey) {
+    return nutritionFoodsCol(uid, dayKey)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+  }
+
+  Future<void> addFoodForDay({
+    required String uid,
+    required String dayKey,
+    required String name,
+    required int calories,
+    int carbs = 0,
+    int protein = 0,
+    int fat = 0,
+    String meal = "Any",
+  }) async {
+    await nutritionFoodsCol(uid, dayKey).add({
+      'name': name.trim(),
+      'calories': calories,
+      'carbs': carbs,
+      'protein': protein,
+      'fat': fat,
+      'meal': meal,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteFoodForDay({
+    required String uid,
+    required String dayKey,
+    required String foodId,
+  }) async {
+    await nutritionFoodsCol(uid, dayKey).doc(foodId).delete();
+  }
+
+  Future<Map<String, dynamic>?> getFoodForDay({
+    required String uid,
+    required String dayKey,
+    required String foodId,
+  }) async {
+    final doc = await nutritionFoodsCol(uid, dayKey).doc(foodId).get();
+    if (!doc.exists) return null;
+    return {'id': doc.id, ...(doc.data() ?? {})};
   }
 }
